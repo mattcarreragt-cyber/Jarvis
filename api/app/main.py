@@ -5,10 +5,11 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth import require_api_key
-from app.contracts import AgentRequest, AgentResponse, ChatRequest
+from app.contracts import AgentRequest, AgentResponse, AgentStatus, ChatRequest
 from app.db import ensure_session, persist_message, persist_routing_log, persist_tool_invocations
 from app.health import get_health
 from app.memory import memory
+import app.pending as pending_store
 from app.registry import registry
 from app.router import route
 from app.routers import docs as docs_router
@@ -69,6 +70,9 @@ async def chat(req: ChatRequest) -> AgentResponse:
     await memory.record_turn(req.session_id, "user", req.message)
     await memory.record_turn(req.session_id, "assistant", response.content, agent=response.agent)
 
+    if response.status == AgentStatus.needs_confirmation and response.confirmation:
+        pending_store.save(response.confirmation)
+
     return response
 
 
@@ -77,15 +81,54 @@ async def chat(req: ChatRequest) -> AgentResponse:
 async def confirm_action(request_id: str, confirmed: bool = True) -> AgentResponse:
     """Confirme ou annule une action sensible (needs_confirmation)."""
     if not confirmed:
+        pending_store.pop(request_id)
         return AgentResponse(
             request_id=request_id, agent="system",
             content="Action annulée.",
         )
-    # L'exécution réelle sera branchée quand les agents write seront implémentés.
-    return AgentResponse(
-        request_id=request_id, agent="system",
-        content="Action confirmée. (Exécution disponible en v2)",
-    )
+
+    confirmation = pending_store.pop(request_id)
+    if confirmation is None:
+        return AgentResponse(
+            request_id=request_id, agent="system",
+            status=AgentStatus.error,
+            content="Action introuvable ou déjà exécutée.",
+        )
+
+    # Dispatch vers ha_tools selon le nom de l'outil
+    from app.agents import ha_tools
+    handler = ha_tools.HANDLERS.get(confirmation.tool)
+    if handler is None:
+        return AgentResponse(
+            request_id=request_id, agent="system",
+            status=AgentStatus.error,
+            content=f"Outil inconnu : {confirmation.tool}",
+        )
+
+    try:
+        args = confirmation.args
+        if args:
+            result = await handler(**args)
+        else:
+            result = await handler()
+
+        if result.ok:
+            return AgentResponse(
+                request_id=request_id, agent="system",
+                content=f"✓ {confirmation.summary} — action exécutée.",
+            )
+        return AgentResponse(
+            request_id=request_id, agent="system",
+            status=AgentStatus.error,
+            content=f"Erreur : {result.error}",
+        )
+    except Exception as e:
+        logger.error("confirm_action error: %s", e)
+        return AgentResponse(
+            request_id=request_id, agent="system",
+            status=AgentStatus.error,
+            content=f"Erreur inattendue : {e}",
+        )
 
 
 @app.get("/", include_in_schema=False)

@@ -2,20 +2,31 @@
 
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { CheckCircle, XCircle } from 'lucide-react'
+
+export interface ConfirmationData {
+  request_id: string
+  tool: string
+  args: Record<string, unknown>
+  summary: string
+}
 
 export interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   agent?: string
+  confirmation?: ConfirmationData
+  confirmResolved?: boolean
 }
 
 interface Props {
   messages: Message[]
   loading: boolean
+  onConfirm?: (requestId: string, confirmed: boolean, msgId: string) => void
 }
 
-export default function ChatPanel({ messages, loading }: Props) {
+export default function ChatPanel({ messages, loading, onConfirm }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -57,6 +68,35 @@ export default function ChatPanel({ messages, loading }: Props) {
                 </span>
               )}
               <span className="whitespace-pre-wrap">{msg.content}</span>
+
+              {/* Confirmation buttons */}
+              {msg.confirmation && !msg.confirmResolved && onConfirm && (
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => onConfirm(msg.confirmation!.request_id, true, msg.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-widest
+                               border border-[var(--cyan)] text-[var(--cyan)] rounded
+                               hover:bg-[rgba(0,212,255,0.1)] transition-colors"
+                  >
+                    <CheckCircle size={12} />
+                    CONFIRMER
+                  </button>
+                  <button
+                    onClick={() => onConfirm(msg.confirmation!.request_id, false, msg.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] tracking-widest
+                               border border-red-500/50 text-red-400 rounded
+                               hover:bg-red-500/10 transition-colors"
+                  >
+                    <XCircle size={12} />
+                    ANNULER
+                  </button>
+                </div>
+              )}
+              {msg.confirmation && msg.confirmResolved && (
+                <span className="block mt-2 text-[10px] text-[var(--text-dim)] tracking-widest">
+                  — action traitée —
+                </span>
+              )}
             </div>
           </motion.div>
         ))}

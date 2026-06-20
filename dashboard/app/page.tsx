@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { History, Upload } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
-import ChatPanel, { Message } from '@/components/ChatPanel'
+import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
 import StatusBar from '@/components/StatusBar'
 import HistoryPanel from '@/components/HistoryPanel'
@@ -40,7 +40,12 @@ export default function Home() {
       })
       const data = await res.json()
       setOrbState('speaking')
-      addMsg({ role: 'assistant', content: data.content || '…', agent: data.agent })
+      addMsg({
+        role: 'assistant',
+        content: data.content || '…',
+        agent: data.agent,
+        confirmation: data.status === 'needs_confirmation' ? data.confirmation as ConfirmationData : undefined,
+      })
       setTimeout(() => setOrbState('idle'), 1500)
     } catch {
       addMsg({ role: 'assistant', content: 'Erreur de connexion à l\'API.', agent: 'system' })
@@ -57,6 +62,17 @@ export default function Home() {
       setIsListening(true); setOrbState('listening')
     }
   }, [isListening])
+
+  const handleConfirm = useCallback(async (requestId: string, confirmed: boolean, msgId: string) => {
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, confirmResolved: true } : m))
+    try {
+      const res = await apiFetch(`/api/chat/confirm?request_id=${requestId}&confirmed=${confirmed}`, { method: 'POST' })
+      const data = await res.json()
+      addMsg({ role: 'assistant', content: data.content || '…', agent: data.agent })
+    } catch {
+      addMsg({ role: 'assistant', content: 'Erreur lors de la confirmation.', agent: 'system' })
+    }
+  }, [addMsg])
 
   const restoreSession = useCallback((msgs: Omit<Message, 'id'>[]) => {
     setMessages(msgs.map(m => ({ ...m, id: uid() })))
@@ -159,7 +175,7 @@ export default function Home() {
 
         {/* Chat or History */}
         <div className="flex-1 relative min-h-0 flex flex-col">
-          <ChatPanel messages={messages} loading={loading} />
+          <ChatPanel messages={messages} loading={loading} onConfirm={handleConfirm} />
 
           <AnimatePresence>
             {showHistory && (

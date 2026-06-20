@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.agents.base import AgentRegistry
+from app.agents.dev_agent import DevAgent
 from app.agents.echo import EchoAgent
 from app.agents.ha_agent import HomeAssistantAgent
 from app.agents.marketing_agent import MarketingAgent
@@ -19,7 +20,7 @@ def build_registry() -> AgentRegistry:
     registry.register(HomeAssistantAgent())
     registry.register(SearchAgent())
     registry.register(MarketingAgent())
-    # À venir : Dev, Image
+    registry.register(DevAgent())
     return registry
 
 
