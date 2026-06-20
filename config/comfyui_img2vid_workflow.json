@@ -1,0 +1,60 @@
+{
+  "_comment": "Template image->video (Stable Video Diffusion) pour JARVIS. Tokens: __IMAGE__ (nom du fichier uploade dans ComfyUI), __FRAMES__, __FPS__. Necessite le modele svd.safetensors (ou svd_xt.safetensors) dans models/checkpoints. Remplace par ton export API si tes noeuds different (ex. LTX image2video sur RunPod).",
+  "1": {
+    "class_type": "ImageOnlyCheckpointLoader",
+    "inputs": { "ckpt_name": "svd_xt.safetensors" }
+  },
+  "2": {
+    "class_type": "LoadImage",
+    "inputs": { "image": "__IMAGE__" }
+  },
+  "3": {
+    "class_type": "SVD_img2vid_Conditioning",
+    "inputs": {
+      "width": 1024,
+      "height": 576,
+      "video_frames": "__FRAMES__",
+      "motion_bucket_id": 127,
+      "fps": "__FPS__",
+      "augmentation_level": 0.0,
+      "clip_vision": ["1", 1],
+      "init_image": ["2", 0],
+      "vae": ["1", 2]
+    }
+  },
+  "4": {
+    "class_type": "VideoLinearCFGGuidance",
+    "inputs": { "min_cfg": 1.0, "model": ["1", 0] }
+  },
+  "5": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 0,
+      "steps": 20,
+      "cfg": 2.5,
+      "sampler_name": "euler",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": ["4", 0],
+      "positive": ["3", 0],
+      "negative": ["3", 1],
+      "latent_image": ["3", 2]
+    }
+  },
+  "6": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["5", 0], "vae": ["1", 2] }
+  },
+  "7": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["6", 0],
+      "frame_rate": "__FPS__",
+      "loop_count": 0,
+      "filename_prefix": "jarvis_i2v",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true
+    }
+  }
+}

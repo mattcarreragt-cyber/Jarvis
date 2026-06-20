@@ -223,6 +223,23 @@ docker exec jarvis-compute-comfyui-1 sh -c '
 > modération (usage lab). Reste dans le cadre légal (pas de personnes réelles sans
 > consentement, pas de contenu illégal).
 
+### Image → vidéo (animer une image existante, SVD)
+
+L'icône 🎬 *« Animer une image »* du dashboard envoie une image à ComfyUI qui
+l'anime via **Stable Video Diffusion**. Modèle requis :
+
+```bash
+docker exec jarvis-compute-comfyui-1 sh -c '
+  cd /opt/ComfyUI/models/checkpoints && \
+  wget -O svd_xt.safetensors \
+  https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/resolve/main/svd_xt.safetensors
+'
+```
+
+> Workflow : `config/comfyui_img2vid_workflow.json` (tokens `__IMAGE__`,
+> `__FRAMES__`, `__FPS__`). SVD produit ~2-4 s par défaut ; sur 8 Go reste en
+> 1024×576. Sur RunPod, remplace par un workflow LTX/Stable-Video plus long.
+
 ---
 
 ## 6. Faster-Whisper (STT)

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -12,6 +12,7 @@ import DocUpload from '@/components/DocUpload'
 import NextcloudPanel from '@/components/NextcloudPanel'
 import JobsPanel from '@/components/JobsPanel'
 import MemoryPanel from '@/components/MemoryPanel'
+import AnimatePanel from '@/components/AnimatePanel'
 import { apiFetch, transcribeAudio, speak } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 
@@ -31,11 +32,12 @@ export default function Home() {
   const [showCloud, setShowCloud]     = useState(false)
   const [showJobs, setShowJobs]       = useState(false)
   const [showMemory, setShowMemory]   = useState(false)
+  const [showAnimate, setShowAnimate] = useState(false)
   const [voiceOut, setVoiceOut]       = useState(false)
 
   const closePanels = useCallback(() => {
     setShowUpload(false); setShowCloud(false); setShowHistory(false)
-    setShowJobs(false); setShowMemory(false)
+    setShowJobs(false); setShowMemory(false); setShowAnimate(false)
   }, [])
 
   const recorder = useVoiceRecorder()
@@ -222,6 +224,18 @@ export default function Home() {
             >
               <Film size={16} />
             </button>
+            {/* Image → vidéo */}
+            <button
+              onClick={() => { const n = !showAnimate; closePanels(); setShowAnimate(n) }}
+              title="Animer une image (image → vidéo)"
+              className={`p-1.5 rounded transition-colors ${
+                showAnimate
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <Clapperboard size={16} />
+            </button>
             {/* Memory */}
             <button
               onClick={() => { const n = !showMemory; closePanels(); setShowMemory(n) }}
@@ -279,6 +293,12 @@ export default function Home() {
             )}
             {showMemory && (
               <MemoryPanel onClose={() => setShowMemory(false)} />
+            )}
+            {showAnimate && (
+              <AnimatePanel
+                onClose={() => setShowAnimate(false)}
+                onLaunched={() => { setShowAnimate(false); setShowJobs(true) }}
+              />
             )}
           </AnimatePresence>
         </div>

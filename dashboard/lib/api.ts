@@ -113,6 +113,20 @@ export async function fetchJobs(): Promise<{ jobs: GenJob[]; running: number }> 
   return r.json()
 }
 
+/** Anime une image (image→vidéo). Retourne le job_id, ou lève une erreur. */
+export async function animateImage(file: File, seconds: number): Promise<string> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('seconds', String(seconds))
+  const headers: HeadersInit = KEY ? { 'X-API-Key': KEY } : {}
+  const r = await fetch(`${API}/api/video/animate`, { method: 'POST', headers, body: form })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `HTTP ${r.status}`)
+  }
+  return (await r.json()).job_id as string
+}
+
 /** Transcrit un blob audio en texte via Whisper (Kubuntu). */
 export async function transcribeAudio(blob: Blob): Promise<string> {
   const form = new FormData()

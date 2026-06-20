@@ -39,6 +39,7 @@ class Settings(BaseSettings):
 
     # Génération de vidéo (ComfyUI / AnimateDiff) — workflow paramétrable par template
     video_workflow_path: str = "config/comfyui_video_workflow.json"
+    video_img2vid_workflow_path: str = "config/comfyui_img2vid_workflow.json"
     video_fps: int = 16
     video_default_seconds: int = 10
     video_max_seconds: int = 20

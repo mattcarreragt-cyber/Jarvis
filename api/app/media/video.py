@@ -44,43 +44,79 @@ def _resolve_template_path(path: str | None = None) -> Path | None:
     return None
 
 
-def _substitute(node: object, prompt: str, negative: str, frames: int, fps: int) -> object:
-    """Remplace récursivement les tokens dans le template."""
+def _apply_tokens(node: object, tokens: dict) -> object:
+    """Remplace récursivement les tokens (clé exacte) dans le template."""
     if isinstance(node, dict):
-        return {k: _substitute(v, prompt, negative, frames, fps) for k, v in node.items()}
+        return {k: _apply_tokens(v, tokens) for k, v in node.items()}
     if isinstance(node, list):
-        return [_substitute(v, prompt, negative, frames, fps) for v in node]
-    if isinstance(node, str):
-        if node == "__PROMPT__":
-            return prompt
-        if node == "__NEG__":
-            return negative
-        if node == "__FRAMES__":
-            return frames
-        if node == "__FPS__":
-            return fps
+        return [_apply_tokens(v, tokens) for v in node]
+    if isinstance(node, str) and node in tokens:
+        return tokens[node]
     return node
 
 
-def build_workflow(prompt: str, negative: str, frames: int, fps: int, seed: int,
-                   workflow_path: str | None = None) -> dict | None:
+def _load_template(workflow_path: str | None) -> dict | None:
     path = _resolve_template_path(workflow_path)
     if path is None:
-        logger.error("Template vidéo introuvable : %s", settings.video_workflow_path)
+        logger.error("Template vidéo introuvable : %s", workflow_path or settings.video_workflow_path)
         return None
     try:
         template = json.loads(path.read_text())
     except Exception as e:
         logger.error("Template vidéo illisible : %s", e)
         return None
-
     template.pop("_comment", None)
-    wf = _substitute(template, prompt, negative, frames, fps)
+    return template
+
+
+def build_workflow(prompt: str, negative: str, frames: int, fps: int, seed: int,
+                   workflow_path: str | None = None) -> dict | None:
+    template = _load_template(workflow_path)
+    if template is None:
+        return None
+    wf = _apply_tokens(template, {
+        "__PROMPT__": prompt, "__NEG__": negative, "__FRAMES__": frames, "__FPS__": fps,
+    })
     # Injecte le seed dans le premier KSampler trouvé
     for node in wf.values():
         if isinstance(node, dict) and node.get("class_type") == "KSampler":
             node.setdefault("inputs", {})["seed"] = seed
     return wf
+
+
+def build_img2vid_workflow(image_name: str, frames: int, fps: int, seed: int,
+                           workflow_path: str | None = None) -> dict | None:
+    """Workflow image→vidéo (token __IMAGE__ = nom du fichier uploadé dans ComfyUI)."""
+    path = workflow_path or settings.video_img2vid_workflow_path
+    template = _load_template(path)
+    if template is None:
+        return None
+    wf = _apply_tokens(template, {
+        "__IMAGE__": image_name, "__FRAMES__": frames, "__FPS__": fps,
+    })
+    for node in wf.values():
+        if isinstance(node, dict) and node.get("class_type") == "KSampler":
+            node.setdefault("inputs", {})["seed"] = seed
+    return wf
+
+
+async def upload_image(image: bytes, filename: str, base_url: str | None = None) -> str | None:
+    """Téléverse une image dans le dossier input de ComfyUI. Retourne son nom stocké."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                f"{_base(base_url)}/upload/image",
+                files={"image": (filename, image, "application/octet-stream")},
+                data={"overwrite": "true"},
+            )
+            r.raise_for_status()
+            data = r.json()
+            name = data.get("name")
+            sub = data.get("subfolder")
+            return f"{sub}/{name}" if sub else name
+    except Exception as e:
+        logger.debug("upload_image échoué: %s", e)
+        return None
 
 
 async def submit(prompt: str, seconds: int, negative: str = "", seed: int | None = None,
@@ -95,7 +131,35 @@ async def submit(prompt: str, seconds: int, negative: str = "", seed: int | None
     wf = build_workflow(prompt, negative, frames, fps, seed, workflow_path)
     if wf is None:
         return {"ok": False, "error": "Template de workflow vidéo manquant ou invalide"}
+    res = await _submit_workflow(wf, base_url)
+    if res["ok"]:
+        res.update({"frames": frames, "seconds": seconds, "seed": seed})
+    return res
 
+
+async def submit_img2vid(image: bytes, filename: str, seconds: int,
+                         seed: int | None = None, base_url: str | None = None,
+                         workflow_path: str | None = None) -> dict:
+    """Anime une image existante (image→vidéo). Upload puis soumission."""
+    seconds = max(2, min(seconds, settings.video_max_seconds))
+    fps = settings.video_fps
+    frames = min(seconds * fps, settings.video_max_frames)
+    seed = seed if seed is not None else random.randint(0, 2**31 - 1)
+
+    name = await upload_image(image, filename, base_url)
+    if name is None:
+        return {"ok": False, "error": "Échec de l'upload de l'image vers ComfyUI"}
+
+    wf = build_img2vid_workflow(name, frames, fps, seed, workflow_path)
+    if wf is None:
+        return {"ok": False, "error": "Template image→vidéo manquant ou invalide"}
+    res = await _submit_workflow(wf, base_url)
+    if res["ok"]:
+        res.update({"frames": frames, "seconds": seconds, "seed": seed})
+    return res
+
+
+async def _submit_workflow(wf: dict, base_url: str | None) -> dict:
     client_id = str(uuid.uuid4())
     try:
         async with httpx.AsyncClient(timeout=30) as client:
@@ -107,8 +171,7 @@ async def submit(prompt: str, seconds: int, negative: str = "", seed: int | None
             prompt_id = r.json().get("prompt_id")
             if not prompt_id:
                 return {"ok": False, "error": "Pas de prompt_id retourné"}
-            return {"ok": True, "job_id": prompt_id, "frames": frames,
-                    "seconds": seconds, "seed": seed}
+            return {"ok": True, "job_id": prompt_id}
     except Exception as e:
         logger.debug("submit vidéo indisponible (Kubuntu éteint ?): %s", e)
         return {"ok": False, "error": "ComfyUI/Kubuntu injoignable"}
