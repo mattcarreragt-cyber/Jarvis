@@ -86,6 +86,8 @@ class VideoAgent(Agent):
             )
 
         job_id = sub["job_id"]
+        from app.media import jobs
+        jobs.register(job_id, kind="video", prompt=prompt)
         est_min = max(1, round(sub["frames"] / 60))   # estimation grossière
         return AgentResponse(
             request_id=req.request_id, agent="video",

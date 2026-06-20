@@ -74,6 +74,22 @@ export async function triggerReembed(): Promise<{ ok: boolean; updated?: number;
   return r.json()
 }
 
+export interface GenJob {
+  id: string
+  kind: string
+  prompt: string
+  state: 'running' | 'done' | 'error'
+  created_at: number
+  view_url: string | null
+  error: string | null
+}
+
+export async function fetchJobs(): Promise<{ jobs: GenJob[]; running: number }> {
+  const r = await apiFetch('/api/jobs')
+  if (!r.ok) return { jobs: [], running: 0 }
+  return r.json()
+}
+
 /** Transcrit un blob audio en texte via Whisper (Kubuntu). */
 export async function transcribeAudio(blob: Blob): Promise<string> {
   const form = new FormData()
