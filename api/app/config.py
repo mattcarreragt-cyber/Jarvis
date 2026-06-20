@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     comfyui_height: int = 1024
     comfyui_timeout: int = 180   # secondes max pour une génération
 
+    # ─── RunPod (3e palier : GPU cloud pour gros modèles) ───────────────────
+    runpod_enabled: bool = False
+    runpod_api_key: str = ""
+    runpod_pod_id: str = ""             # mode Pod : id à démarrer/arrêter
+    runpod_ollama_url: str = ""         # URL Ollama exposée par le pod
+    runpod_comfyui_url: str = ""        # URL ComfyUI exposée par le pod
+    runpod_start_timeout: int = 300     # s max d'attente au démarrage du pod
+    video_hd_workflow_path: str = "config/comfyui_video_hd_workflow.json"
+
     # Génération de vidéo (ComfyUI / AnimateDiff) — workflow paramétrable par template
     video_workflow_path: str = "config/comfyui_video_workflow.json"
     video_fps: int = 16

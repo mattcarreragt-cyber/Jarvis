@@ -76,10 +76,12 @@ class ChatAgent(Agent):
             )
 
         model = disp.get("model")
-        answer = await chat(self._build_messages(req), model=model)
+        answer = await chat(self._build_messages(req), model=model,
+                            base_url=disp.get("base_url"))
         call = ToolCall(
             tool="llm.chat",
-            args={"capability": capability, "model": model},
+            args={"capability": capability, "model": model,
+                  "machine": disp.get("machine")},
             result=ToolResult(ok=answer is not None,
                               error=None if answer else "Réponse vide / LLM injoignable"),
         )

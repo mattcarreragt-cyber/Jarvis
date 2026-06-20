@@ -24,8 +24,8 @@ from app.config import settings
 logger = logging.getLogger("jarvis.comfyui")
 
 
-def _base() -> str:
-    return settings.comfyui_base_url.rstrip("/")
+def _base(override: str | None = None) -> str:
+    return (override or settings.comfyui_base_url).rstrip("/")
 
 
 async def health() -> bool:
@@ -90,16 +90,18 @@ async def generate(
     prompt: str,
     negative: str = "lowres, blurry, watermark, text, deformed",
     seed: int | None = None,
+    base_url: str | None = None,
 ) -> dict | None:
     """Génère une image. Retourne {filename, subfolder, type, seed} ou None."""
     seed = seed if seed is not None else random.randint(0, 2**31 - 1)
     client_id = str(uuid.uuid4())
     workflow = _build_workflow(prompt, negative, seed)
+    base = _base(base_url)
 
     try:
         async with httpx.AsyncClient(timeout=settings.comfyui_timeout) as client:
             r = await client.post(
-                f"{_base()}/prompt",
+                f"{base}/prompt",
                 json={"prompt": workflow, "client_id": client_id},
             )
             if r.status_code >= 400:
@@ -113,7 +115,7 @@ async def generate(
             deadline = asyncio.get_event_loop().time() + settings.comfyui_timeout
             while asyncio.get_event_loop().time() < deadline:
                 await asyncio.sleep(1.5)
-                h = await client.get(f"{_base()}/history/{prompt_id}")
+                h = await client.get(f"{base}/history/{prompt_id}")
                 if h.status_code != 200:
                     continue
                 data = h.json().get(prompt_id)
@@ -137,12 +139,13 @@ async def generate(
         return None
 
 
-async def fetch_image(filename: str, subfolder: str, type_: str) -> bytes | None:
+async def fetch_image(filename: str, subfolder: str, type_: str,
+                      base_url: str | None = None) -> bytes | None:
     """Récupère les octets d'une image générée (proxy depuis ComfyUI)."""
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.get(
-                f"{_base()}/view",
+                f"{_base(base_url)}/view",
                 params={"filename": filename, "subfolder": subfolder, "type": type_},
             )
             r.raise_for_status()

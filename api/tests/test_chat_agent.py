@@ -65,7 +65,7 @@ async def test_chat_builds_context_messages():
     )
     captured = {}
 
-    async def fake_chat(messages, model=None, temperature=0.7):
+    async def fake_chat(messages, model=None, temperature=0.7, base_url=None):
         captured["messages"] = messages
         return "réponse"
 

@@ -25,8 +25,8 @@ _EMBED_TIMEOUT = 15
 _CHAT_TIMEOUT = 120
 
 
-def _base() -> str:
-    return settings.ollama_base_url.rstrip("/")
+def _base(override: str | None = None) -> str:
+    return (override or settings.ollama_base_url).rstrip("/")
 
 
 async def health() -> bool:
@@ -75,14 +75,15 @@ async def unload_all() -> int:
     return n
 
 
-async def embed(text: str, model: str = EMBED_MODEL) -> list[float] | None:
+async def embed(text: str, model: str = EMBED_MODEL,
+                base_url: str | None = None) -> list[float] | None:
     """Embedding d'un texte. None si Ollama injoignable."""
     if not text.strip():
         return None
     try:
         async with httpx.AsyncClient(timeout=_EMBED_TIMEOUT) as client:
             r = await client.post(
-                f"{_base()}/api/embeddings",
+                f"{_base(base_url)}/api/embeddings",
                 json={"model": model, "prompt": text},
             )
             r.raise_for_status()
@@ -115,15 +116,17 @@ async def chat(
     messages: list[dict],
     model: str = CHAT_MODEL_FAST,
     temperature: float = 0.7,
+    base_url: str | None = None,
 ) -> str | None:
     """Complétion de chat. messages = [{"role": "...", "content": "..."}].
 
+    base_url : surcharge l'endpoint (ex. RunPod). None = Kubuntu par défaut.
     None si Ollama injoignable.
     """
     try:
         async with httpx.AsyncClient(timeout=_CHAT_TIMEOUT) as client:
             r = await client.post(
-                f"{_base()}/api/chat",
+                f"{_base(base_url)}/api/chat",
                 json={
                     "model": model,
                     "messages": messages,

@@ -31,11 +31,12 @@ logger = logging.getLogger("jarvis.video")
 _TOKENS_INT = {"__FRAMES__", "__FPS__"}
 
 
-def _resolve_template_path() -> Path | None:
+def _resolve_template_path(path: str | None = None) -> Path | None:
+    rel = path or settings.video_workflow_path
     candidates = [
-        settings.video_workflow_path,
-        f"/app/{settings.video_workflow_path}",
-        str(Path(__file__).resolve().parent.parent.parent.parent / settings.video_workflow_path),
+        rel,
+        f"/app/{rel}",
+        str(Path(__file__).resolve().parent.parent.parent.parent / rel),
     ]
     for c in candidates:
         if c and Path(c).is_file():
@@ -61,8 +62,9 @@ def _substitute(node: object, prompt: str, negative: str, frames: int, fps: int)
     return node
 
 
-def build_workflow(prompt: str, negative: str, frames: int, fps: int, seed: int) -> dict | None:
-    path = _resolve_template_path()
+def build_workflow(prompt: str, negative: str, frames: int, fps: int, seed: int,
+                   workflow_path: str | None = None) -> dict | None:
+    path = _resolve_template_path(workflow_path)
     if path is None:
         logger.error("Template vidéo introuvable : %s", settings.video_workflow_path)
         return None
@@ -81,7 +83,8 @@ def build_workflow(prompt: str, negative: str, frames: int, fps: int, seed: int)
     return wf
 
 
-async def submit(prompt: str, seconds: int, negative: str = "", seed: int | None = None) -> dict:
+async def submit(prompt: str, seconds: int, negative: str = "", seed: int | None = None,
+                 base_url: str | None = None, workflow_path: str | None = None) -> dict:
     """Soumet un job vidéo. Retourne {ok, job_id?, frames?, error?}."""
     seconds = max(2, min(seconds, settings.video_max_seconds))
     fps = settings.video_fps
@@ -89,14 +92,14 @@ async def submit(prompt: str, seconds: int, negative: str = "", seed: int | None
     seed = seed if seed is not None else random.randint(0, 2**31 - 1)
     negative = negative or "lowres, blurry, watermark, text, deformed, flickering"
 
-    wf = build_workflow(prompt, negative, frames, fps, seed)
+    wf = build_workflow(prompt, negative, frames, fps, seed, workflow_path)
     if wf is None:
         return {"ok": False, "error": "Template de workflow vidéo manquant ou invalide"}
 
     client_id = str(uuid.uuid4())
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.post(f"{_base()}/prompt",
+            r = await client.post(f"{_base(base_url)}/prompt",
                                   json={"prompt": wf, "client_id": client_id})
             if r.status_code >= 400:
                 logger.warning("ComfyUI /prompt vidéo erreur %s : %s", r.status_code, r.text[:300])
@@ -111,14 +114,14 @@ async def submit(prompt: str, seconds: int, negative: str = "", seed: int | None
         return {"ok": False, "error": "ComfyUI/Kubuntu injoignable"}
 
 
-async def status(job_id: str) -> dict:
+async def status(job_id: str, base_url: str | None = None) -> dict:
     """État d'un job. Retourne {state: running|done|error, media?}.
 
     media = {filename, subfolder, type} quand la vidéo est prête.
     """
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            h = await client.get(f"{_base()}/history/{job_id}")
+            h = await client.get(f"{_base(base_url)}/history/{job_id}")
             if h.status_code != 200:
                 return {"state": "running"}
             data = h.json().get(job_id)
@@ -147,11 +150,12 @@ async def status(job_id: str) -> dict:
         return {"state": "running"}
 
 
-async def fetch_video(filename: str, subfolder: str, type_: str) -> bytes | None:
+async def fetch_video(filename: str, subfolder: str, type_: str,
+                      base_url: str | None = None) -> bytes | None:
     """Récupère les octets de la vidéo générée (proxy depuis ComfyUI)."""
     try:
         async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.get(f"{_base()}/view",
+            r = await client.get(f"{_base(base_url)}/view",
                                  params={"filename": filename, "subfolder": subfolder, "type": type_})
             r.raise_for_status()
             return r.content

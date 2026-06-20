@@ -22,19 +22,24 @@ class Job:
     created_at: float = field(default_factory=time.time)
     view_url: str | None = None
     error: str | None = None
+    base_url: str | None = None   # endpoint ComfyUI (RunPod) si applicable
 
 
 _jobs: dict[str, Job] = {}
 
 
-def register(job_id: str, kind: str, prompt: str) -> None:
-    _jobs[job_id] = Job(id=job_id, kind=kind, prompt=prompt)
+def register(job_id: str, kind: str, prompt: str, base_url: str | None = None) -> None:
+    _jobs[job_id] = Job(id=job_id, kind=kind, prompt=prompt, base_url=base_url)
+
+
+def get(job_id: str) -> Job | None:
+    return _jobs.get(job_id)
 
 
 async def _refresh(job: Job) -> None:
     if job.state != "running" or job.kind != "video":
         return
-    st = await video.status(job.id)
+    st = await video.status(job.id, base_url=job.base_url)
     if st.get("state") == "done" and st.get("media"):
         from urllib.parse import urlencode
         m = st["media"]

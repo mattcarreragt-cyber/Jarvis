@@ -59,13 +59,19 @@ def get_capability(name: str) -> dict[str, Any] | None:
 
 
 def resolve_chat_hint(message: str) -> str:
-    """Retourne 'fast' ou 'deep' selon les mots-clés du message."""
+    """Retourne 'xl' (RunPod), 'deep' ou 'fast' selon les mots-clés du message."""
+    from app.config import settings
     data = _load()
-    triggers = data.get("chat_policy", {}).get("deep_triggers", [])
+    policy = data.get("chat_policy", {})
     msg_lower = message.lower()
-    if any(t in msg_lower for t in triggers):
+    # 'xl' uniquement si RunPod est activé (gros modèle cloud)
+    if settings.runpod_enabled:
+        xl = policy.get("xl_triggers", [])
+        if any(t in msg_lower for t in xl):
+            return "xl"
+    if any(t in msg_lower for t in policy.get("deep_triggers", [])):
         return "deep"
-    return data.get("chat_policy", {}).get("default", "fast")
+    return policy.get("default", "fast")
 
 
 async def dispatch(capability: str) -> dict[str, Any]:
@@ -79,6 +85,17 @@ async def dispatch(capability: str) -> dict[str, Any]:
 
     machine = cap.get("machine", "unraid")
     gpu     = cap.get("gpu", False)
+
+    # ── 3e palier : RunPod (GPU cloud) ────────────────────────────────────
+    if machine == "runpod":
+        from app.orchestration import runpod
+        res = await runpod.ensure_runpod(cap.get("backend"))
+        if not res.get("ok"):
+            return {"ok": False, "error": res.get("error"), "machine": machine,
+                    "backend": cap.get("backend"), "model": cap.get("model"), "gpu": gpu}
+        return {"ok": True, "machine": machine, "backend": cap.get("backend"),
+                "model": cap.get("model"), "gpu": gpu, "vram_gb": cap.get("vram_gb"),
+                "base_url": res["base_url"], "workflow": cap.get("workflow")}
 
     if machine == "kubuntu" and gpu:
         alive = await is_kubuntu_alive()
@@ -104,6 +121,7 @@ async def dispatch(capability: str) -> dict[str, Any]:
         "model":   cap.get("model"),
         "gpu":     gpu,
         "vram_gb": cap.get("vram_gb"),
+        "workflow": cap.get("workflow"),
     }
 
 

@@ -72,7 +72,24 @@ capabilities:
     gpu: true
     vram_gb: 8
     exclusive: true              # décharge LLM + ne co-charge pas avec l'image
+    workflow: config/comfyui_video_workflow.json
     description: "Génération de vidéo 10-20 s (512x512, asynchrone, plusieurs min)"
+
+  # ─── 3e palier : RunPod (GPU cloud) — gros modèles que 8 Go ne peut pas faire ─
+  chat.xl:
+    machine: runpod
+    backend: ollama
+    model: qwen2.5:72b
+    gpu: true
+    description: "Très gros LLM (RunPod) — raisonnement maximal, contexte long"
+
+  video.hd:
+    machine: runpod
+    backend: comfyui
+    model: ltx-video             # ou hunyuan-video / cogvideox (gros GPU)
+    gpu: true
+    workflow: config/comfyui_video_hd_workflow.json
+    description: "Vidéo HQ 10-20 s, 768p+ (RunPod, gros GPU)"
 
 # Politique de sélection chat (utilisée par le Scheduler)
 # L'agent peut surcharger avec hint: fast | deep
@@ -85,3 +102,12 @@ chat_policy:
     - "brainstorming"
     - "code"
     - "architecture"
+  # Déclencheurs du palier RunPod (gros modèle cloud) — actifs si RUNPOD_ENABLED=true
+  xl_triggers:
+    - "gros modèle"
+    - "modèle maximal"
+    - "runpod"
+    - "puissance maximale"
+    - "réflexion profonde"
+    - "72b"
+    - "70b"

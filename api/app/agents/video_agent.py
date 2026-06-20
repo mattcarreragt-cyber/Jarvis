@@ -54,24 +54,32 @@ class VideoAgent(Agent):
         return (prompt or message), seconds
 
     async def handle(self, req: AgentRequest) -> AgentResponse:
-        disp = await dispatch("video")
+        from app.config import settings
+        # Palier HD via RunPod si configuré, sinon AnimateDiff local (Kubuntu)
+        use_hd = settings.runpod_enabled and bool(settings.runpod_comfyui_url)
+        capability = "video.hd" if use_hd else "video"
+
+        disp = await dispatch(capability)
         if not disp.get("ok"):
+            where = "RunPod" if use_hd else "Kubuntu"
             return AgentResponse(
                 request_id=req.request_id, agent="video",
                 status=AgentStatus.error,
-                content="Le GPU (Kubuntu) est indisponible, impossible de générer une vidéo.\n\n"
+                content=f"Le GPU ({where}) est indisponible, impossible de générer une vidéo.\n\n"
                         f"_{disp.get('error', 'GPU hors ligne')}._",
                 tool_calls=[ToolCall(
-                    tool="orchestration.dispatch", args={"capability": "video"},
+                    tool="orchestration.dispatch", args={"capability": capability},
                     result=ToolResult(ok=False, error=disp.get("error")),
                 )],
             )
 
+        base = disp.get("base_url")
         prompt, seconds = self._parse(req.message)
-        sub = await video.submit(prompt, seconds)
+        sub = await video.submit(prompt, seconds, base_url=base,
+                                 workflow_path=disp.get("workflow"))
         call = ToolCall(
             tool="comfyui.video.submit",
-            args={"prompt": prompt, "seconds": seconds},
+            args={"prompt": prompt, "seconds": seconds, "capability": capability},
             result=ToolResult(ok=sub.get("ok", False),
                               data=sub if sub.get("ok") else None,
                               error=sub.get("error")),
@@ -87,7 +95,7 @@ class VideoAgent(Agent):
 
         job_id = sub["job_id"]
         from app.media import jobs
-        jobs.register(job_id, kind="video", prompt=prompt)
+        jobs.register(job_id, kind="video", prompt=prompt, base_url=base)
         est_min = max(1, round(sub["frames"] / 60))   # estimation grossière
         return AgentResponse(
             request_id=req.request_id, agent="video",
