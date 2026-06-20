@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.contracts import AgentRequest, AgentResponse, ChatRequest
+from app.db import ensure_session, persist_message, persist_routing_log, persist_tool_invocations
 from app.health import get_health
 from app.memory import memory
 from app.registry import registry
@@ -45,6 +46,7 @@ async def chat(req: ChatRequest) -> AgentResponse:
 
     agent = registry.get(decision.agent) or registry.get("echo")
 
+    # Mémoire + contexte
     context = await memory.build_context(req.session_id, req.message)
 
     agent_req = AgentRequest(
@@ -56,11 +58,17 @@ async def chat(req: ChatRequest) -> AgentResponse:
     )
     response = await agent.handle(agent_req)
 
-    # Persiste les tours en mémoire court terme (tolérant aux pannes).
+    # Persistance (tolérant aux pannes — Postgres absent = log + continue)
+    await ensure_session(req.session_id)
+    await persist_message(req.session_id, "user", req.message)
+    await persist_message(req.session_id, "assistant", response.content, agent=response.agent)
+    await persist_routing_log(request_id, req.session_id, decision)
+    await persist_tool_invocations(request_id, response)
+
+    # Mémoire court terme Redis
     await memory.record_turn(req.session_id, "user", req.message)
-    await memory.record_turn(
-        req.session_id, "assistant", response.content, agent=response.agent
-    )
+    await memory.record_turn(req.session_id, "assistant", response.content, agent=response.agent)
+
     return response
 
 

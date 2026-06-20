@@ -24,9 +24,8 @@ class SystemAgent(Agent):
             description="État et métriques de la machine locale : CPU, RAM, "
             "disque, uptime, processus.",
             keywords=[
-                "cpu", "processeur", "ram", "mémoire", "memoire", "disque",
-                "disk", "espace", "uptime", "charge", "machine", "système",
-                "systeme", "processus",
+                "cpu", "processeur", "ram", "mémoire", "memoire",
+                "uptime", "charge", "machine", "système", "systeme", "processus",
             ],
             tools=SPECS,
             default_permissions=["system:read"],
