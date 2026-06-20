@@ -73,3 +73,29 @@ export async function triggerReembed(): Promise<{ ok: boolean; updated?: number;
   if (!r.ok) return { ok: false, error: `HTTP ${r.status}` }
   return r.json()
 }
+
+/** Transcrit un blob audio en texte via Whisper (Kubuntu). */
+export async function transcribeAudio(blob: Blob): Promise<string> {
+  const form = new FormData()
+  form.append('file', blob, 'audio.webm')
+  const headers: HeadersInit = KEY ? { 'X-API-Key': KEY } : {}
+  const r = await fetch(`${API}/api/voice/transcribe`, { method: 'POST', headers, body: form })
+  if (!r.ok) throw new Error(`transcribe HTTP ${r.status}`)
+  const data = await r.json()
+  return data.text as string
+}
+
+/** Synthèse vocale (Piper). Retourne une URL d'objet audio jouable, ou null. */
+export async function speak(text: string): Promise<string | null> {
+  try {
+    const r = await apiFetch('/api/voice/speak', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    })
+    if (!r.ok) return null
+    const blob = await r.blob()
+    return URL.createObjectURL(blob)
+  } catch {
+    return null
+  }
+}

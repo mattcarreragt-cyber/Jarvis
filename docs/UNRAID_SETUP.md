@@ -172,23 +172,18 @@ Pour la **recherche / marketing**, ingère d'abord un document via l'icône
 
 ---
 
-## 7. (Optionnel) Piper TTS sur Unraid — CPU, sans GPU
+## 7. (Optionnel) Voix — TTS Piper (CPU Unraid) + STT Whisper (Kubuntu)
 
-La synthèse vocale tourne sur Unraid en CPU. Ajoute ce service si tu veux la voix.
+### 7a. TTS — Piper en serveur HTTP
 
-```bash
-# Crée le dossier pour les modèles de voix
-mkdir -p /mnt/user/appdata/jarvis/piper-data
-```
-
-Ajoute un conteneur via **Community Apps** (cherche « piper ») ou ajoute ce bloc
-au `docker-compose.yml` puis relance `docker compose up -d` :
+JARVIS appelle Piper en **HTTP** (POST `{text}` → WAV). Ajoute ce service au
+`docker-compose.yml` puis `docker compose up -d` :
 
 ```yaml
   piper:
-    image: rhasspy/wyoming-piper:latest
+    image: artibex/piper-http:latest    # serveur HTTP Piper (POST JSON {text} → wav)
     restart: unless-stopped
-    command: --voice fr_FR-upmc-medium
+    command: --model fr_FR-upmc-medium
     ports:
       - "5000:5000"
     volumes:
@@ -198,6 +193,22 @@ au `docker-compose.yml` puis relance `docker compose up -d` :
 ```
 
 Puis dans `.env` : `PIPER_BASE_URL=http://piper:5000`.
+
+> Le client tente d'abord `POST /` avec `{"text": ...}`, puis `GET /?text=...`.
+> Si tu utilises une autre image HTTP Piper, vérifie qu'elle expose l'une de ces
+> deux conventions. Sans serveur Piper, la voix de sortie est simplement
+> silencieuse (aucune erreur bloquante).
+
+### 7b. STT — Whisper
+
+Le STT (transcription du micro) tourne sur **Kubuntu** (GPU) via le service
+`whisper` de `docker-compose.kubuntu.yml` — voir `KUBUNTU_SETUP.md`. Le bouton
+micro du dashboard enregistre, envoie l'audio à l'API qui réveille Kubuntu si
+besoin, transcrit, puis envoie le texte comme message.
+
+> Le micro nécessite **HTTPS ou localhost** (contrainte navigateur `getUserMedia`).
+> En accès LAN via `http://IP:3000`, autorise le micro pour cette origine, ou
+> place le dashboard derrière un reverse-proxy HTTPS.
 
 ---
 

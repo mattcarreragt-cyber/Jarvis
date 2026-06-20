@@ -20,6 +20,7 @@ from app.routers import images as images_router
 from app.routers import nextcloud as nextcloud_router
 from app.routers import sessions
 from app.routers import video as video_router
+from app.routers import voice as voice_router
 from app.sources import nextcloud as nc_source
 from app.sources import sync as nc_sync
 
@@ -56,6 +57,7 @@ app.include_router(docs_router.router)
 app.include_router(nextcloud_router.router)
 app.include_router(images_router.router)
 app.include_router(video_router.router)
+app.include_router(voice_router.router)
 
 
 @app.get("/api/health", tags=["system"])

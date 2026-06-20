@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -10,7 +10,8 @@ import StatusBar from '@/components/StatusBar'
 import HistoryPanel from '@/components/HistoryPanel'
 import DocUpload from '@/components/DocUpload'
 import NextcloudPanel from '@/components/NextcloudPanel'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, transcribeAudio, speak } from '@/lib/api'
+import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 
 let msgCounter = 0
 const uid = () => `msg-${++msgCounter}`
@@ -26,9 +27,17 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false)
   const [showUpload, setShowUpload]   = useState(false)
   const [showCloud, setShowCloud]     = useState(false)
+  const [voiceOut, setVoiceOut]       = useState(false)
+
+  const recorder = useVoiceRecorder()
 
   const addMsg = useCallback((msg: Omit<Message, 'id'>) =>
     setMessages(prev => [...prev, { ...msg, id: uid() }]), [])
+
+  const playTTS = useCallback(async (text: string) => {
+    const url = await speak(text)
+    if (url) { try { await new Audio(url).play() } catch { /* lecture refusée */ } }
+  }, [])
 
   const sendMessage = useCallback(async (text: string) => {
     if (loading) return
@@ -49,6 +58,7 @@ export default function Home() {
         confirmation: data.status === 'needs_confirmation' ? data.confirmation as ConfirmationData : undefined,
         artifacts: data.artifacts,
       })
+      if (voiceOut && data.content) playTTS(data.content)
       setTimeout(() => setOrbState('idle'), 1500)
     } catch {
       addMsg({ role: 'assistant', content: 'Erreur de connexion à l\'API.', agent: 'system' })
@@ -56,15 +66,29 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
-  }, [loading, addMsg])
+  }, [loading, addMsg, voiceOut, playTTS])
 
-  const toggleVoice = useCallback(() => {
-    if (isListening) {
-      setIsListening(false); setOrbState('idle')
+  const toggleVoice = useCallback(async () => {
+    if (recorder.isRecording) {
+      // Fin d'enregistrement → transcription → envoi
+      setIsListening(false)
+      setOrbState('thinking')
+      const blob = await recorder.stop()
+      if (!blob) { setOrbState('idle'); return }
+      try {
+        const text = await transcribeAudio(blob)
+        if (text) await sendMessage(text)
+        else setOrbState('idle')
+      } catch {
+        addMsg({ role: 'assistant', content: 'Transcription indisponible (Kubuntu éteint ?).', agent: 'system' })
+        setOrbState('idle')
+      }
     } else {
-      setIsListening(true); setOrbState('listening')
+      const ok = await recorder.start()
+      if (ok) { setIsListening(true); setOrbState('listening') }
+      else addMsg({ role: 'assistant', content: 'Micro inaccessible (permission refusée ?).', agent: 'system' })
     }
-  }, [isListening])
+  }, [recorder, sendMessage, addMsg])
 
   const handleConfirm = useCallback(async (requestId: string, confirmed: boolean, msgId: string) => {
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, confirmResolved: true } : m))
@@ -141,6 +165,18 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Voix sortie (TTS auto) */}
+            <button
+              onClick={() => setVoiceOut(v => !v)}
+              title={voiceOut ? 'Couper la voix' : 'Activer la lecture vocale'}
+              className={`p-1.5 rounded transition-colors ${
+                voiceOut
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              {voiceOut ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
             {/* Upload doc */}
             <button
               onClick={() => { setShowUpload(v => !v); setShowHistory(false); setShowCloud(false) }}
