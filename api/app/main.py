@@ -1,10 +1,13 @@
+import asyncio
 import logging
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth import require_api_key
+from app.config import settings
 from app.contracts import AgentRequest, AgentResponse, AgentStatus, ChatRequest
 from app.db import ensure_session, persist_message, persist_routing_log, persist_tool_invocations
 from app.health import get_health
@@ -13,12 +16,31 @@ import app.pending as pending_store
 from app.registry import registry
 from app.router import route
 from app.routers import docs as docs_router
+from app.routers import nextcloud as nextcloud_router
 from app.routers import sessions
+from app.sources import nextcloud as nc_source
+from app.sources import sync as nc_sync
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("jarvis")
 
-app = FastAPI(title="JARVIS OS", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task: asyncio.Task | None = None
+    if settings.nextcloud_sync_enabled and nc_source._configured():
+        task = asyncio.create_task(nc_sync.periodic_loop())
+        logger.info("Boucle de sync Nextcloud démarrée")
+    else:
+        logger.info("Sync Nextcloud désactivée ou non configurée")
+    try:
+        yield
+    finally:
+        if task:
+            task.cancel()
+
+
+app = FastAPI(title="JARVIS OS", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,6 +51,7 @@ app.add_middleware(
 
 app.include_router(sessions.router)
 app.include_router(docs_router.router)
+app.include_router(nextcloud_router.router)
 
 
 @app.get("/api/health", tags=["system"])

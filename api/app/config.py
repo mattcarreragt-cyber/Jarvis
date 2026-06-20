@@ -30,5 +30,14 @@ class Settings(BaseSettings):
     ha_url: str = "http://homeassistant.local:8123"
     ha_token: str = ""
 
+    # Nextcloud (RAG local)
+    nextcloud_url: str = ""              # ex. http://192.168.1.50:8080 (sans /remote.php)
+    nextcloud_user: str = ""
+    nextcloud_password: str = ""         # app password (Paramètres → Sécurité)
+    nextcloud_root: str = "/"            # "/" = tout Nextcloud ; ou "/Documents"
+    nextcloud_sync_enabled: bool = False
+    nextcloud_sync_interval: int = 3600  # secondes entre deux syncs périodiques
+    nextcloud_max_file_mb: int = 50      # ignore les fichiers plus gros
+
 
 settings = Settings()

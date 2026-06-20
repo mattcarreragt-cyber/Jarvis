@@ -39,3 +39,26 @@ export async function fetchSession(id: string): Promise<HistoryMessage[]> {
   if (!r.ok) return []
   return r.json()
 }
+
+export interface NextcloudStatus {
+  configured: boolean
+  sync_enabled: boolean
+  sync_interval: number
+  root: string
+  running: boolean
+  files: number
+  chunks: number
+  last_sync: string | null
+  last_result: Record<string, unknown> | null
+}
+
+export async function fetchNextcloudStatus(): Promise<NextcloudStatus | null> {
+  const r = await apiFetch('/api/nextcloud/status')
+  if (!r.ok) return null
+  return r.json()
+}
+
+export async function triggerNextcloudSync(): Promise<boolean> {
+  const r = await apiFetch('/api/nextcloud/sync?background=true', { method: 'POST' })
+  return r.ok
+}

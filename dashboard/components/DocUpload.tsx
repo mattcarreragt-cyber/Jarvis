@@ -111,9 +111,11 @@ export default function DocUpload({ onClose }: Props) {
           <span className="text-xs tracking-widest text-[var(--text-dim)]">
             {state === 'uploading' ? 'TRAITEMENT…' : 'CLIQUER POUR CHOISIR UN FICHIER'}
           </span>
-          <span className="text-[10px] text-[var(--text-dim)] opacity-60">.txt · .md · .pdf</span>
+          <span className="text-[10px] text-[var(--text-dim)] opacity-60">.txt · .md · .pdf · .docx · .xlsx · .pptx · images</span>
         </button>
-        <input ref={fileRef} type="file" accept=".txt,.md,.pdf" className="hidden" onChange={pick} />
+        <input ref={fileRef} type="file"
+               accept=".txt,.md,.pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.gif,.webp,.bmp"
+               className="hidden" onChange={pick} />
 
         {/* Status */}
         <AnimatePresence>

@@ -2,13 +2,14 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload } from 'lucide-react'
+import { History, Upload, Cloud } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
 import StatusBar from '@/components/StatusBar'
 import HistoryPanel from '@/components/HistoryPanel'
 import DocUpload from '@/components/DocUpload'
+import NextcloudPanel from '@/components/NextcloudPanel'
 import { apiFetch } from '@/lib/api'
 
 let msgCounter = 0
@@ -24,6 +25,7 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showUpload, setShowUpload]   = useState(false)
+  const [showCloud, setShowCloud]     = useState(false)
 
   const addMsg = useCallback((msg: Omit<Message, 'id'>) =>
     setMessages(prev => [...prev, { ...msg, id: uid() }]), [])
@@ -140,7 +142,7 @@ export default function Home() {
           <div className="flex items-center gap-4">
             {/* Upload doc */}
             <button
-              onClick={() => { setShowUpload(v => !v); setShowHistory(false) }}
+              onClick={() => { setShowUpload(v => !v); setShowHistory(false); setShowCloud(false) }}
               title="Ingérer un document"
               className={`p-1.5 rounded transition-colors ${
                 showUpload
@@ -150,9 +152,21 @@ export default function Home() {
             >
               <Upload size={16} />
             </button>
+            {/* Nextcloud */}
+            <button
+              onClick={() => { setShowCloud(v => !v); setShowUpload(false); setShowHistory(false) }}
+              title="Nextcloud — RAG local"
+              className={`p-1.5 rounded transition-colors ${
+                showCloud
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <Cloud size={16} />
+            </button>
             {/* History button */}
             <button
-              onClick={() => { setShowHistory(v => !v); setShowUpload(false) }}
+              onClick={() => { setShowHistory(v => !v); setShowUpload(false); setShowCloud(false) }}
               title="Historique des sessions"
               className={`p-1.5 rounded transition-colors ${
                 showHistory
@@ -186,6 +200,9 @@ export default function Home() {
             )}
             {showUpload && (
               <DocUpload onClose={() => setShowUpload(false)} />
+            )}
+            {showCloud && (
+              <NextcloudPanel onClose={() => setShowCloud(false)} />
             )}
           </AnimatePresence>
         </div>

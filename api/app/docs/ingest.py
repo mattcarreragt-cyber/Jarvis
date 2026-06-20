@@ -6,20 +6,19 @@ Stratégie :
 - Index full-text Qdrant sur le champ `text` → permet MatchText sans vecteurs.
 - Chunking : fenêtre glissante 500 chars / overlap 80 chars.
 
-Formats supportés : .txt, .md, .pdf
+Extraction multi-format : voir app/docs/extract.py
 """
 
 from __future__ import annotations
 
-import io
 import logging
 import re
 import uuid
-from pathlib import Path
 
 from qdrant_client import AsyncQdrantClient, models
 
 from app.config import settings
+from app.docs.extract import extract_text
 
 logger = logging.getLogger("jarvis.docs")
 
@@ -74,31 +73,49 @@ def _chunk(text: str) -> list[str]:
     return [c for c in chunks if len(c) > 40]  # ignore les micro-chunks
 
 
-def _extract_text(filename: str, content: bytes) -> str:
-    ext = Path(filename).suffix.lower()
-    if ext in (".txt", ".md"):
-        return content.decode("utf-8", errors="replace")
-    if ext == ".pdf":
-        try:
-            from pypdf import PdfReader
-            reader = PdfReader(io.BytesIO(content))
-            return "\n".join(p.extract_text() or "" for p in reader.pages)
-        except Exception as e:
-            raise ValueError(f"Impossible de lire le PDF : {e}") from e
-    raise ValueError(f"Format non supporté : {ext} (acceptés : .txt .md .pdf)")
+async def delete_source(source: str) -> None:
+    """Supprime tous les chunks d'une source (idempotent)."""
+    client = _qdrant()
+    try:
+        await _ensure_collection(client)
+        await client.delete(
+            COLLECTION,
+            points_selector=models.FilterSelector(
+                filter=models.Filter(must=[
+                    models.FieldCondition(key="source", match=models.MatchValue(value=source))
+                ])
+            ),
+        )
+    finally:
+        await client.close()
 
 
 async def ingest_file(
     filename: str,
     content: bytes,
     tags: list[str] | None = None,
-    kind: str = "doc",
+    kind: str | None = None,
+    source: str | None = None,
+    replace: bool = False,
 ) -> dict:
-    """Ingère un fichier, retourne {source, chunks_count}."""
-    text = _extract_text(filename, content)
+    """Ingère un fichier, retourne {source, chunks_count}.
+
+    source : identifiant logique du document (défaut = filename). La sync Nextcloud
+             utilise "nextcloud:/chemin" pour distinguer la provenance.
+    replace : si True, supprime d'abord les chunks existants de cette source
+              (utilisé par la sync pour les fichiers modifiés).
+    """
+    from app.docs.extract import kind_for
+
+    src = source or filename
+    kind = kind or kind_for(filename)
+    text = extract_text(filename, content)
     chunks = _chunk(text)
     if not chunks:
         raise ValueError("Document vide ou illisible")
+
+    if replace:
+        await delete_source(src)
 
     client = _qdrant()
     try:
@@ -109,7 +126,8 @@ async def ingest_file(
                 vector=[0.0],           # dummy — remplacé par embeddings plus tard
                 payload={
                     "text":        chunk,
-                    "source":      filename,
+                    "source":      src,
+                    "filename":    filename,
                     "chunk_index": i,
                     "kind":        kind,
                     "tags":        tags or [],
@@ -118,8 +136,8 @@ async def ingest_file(
             for i, chunk in enumerate(chunks)
         ]
         await client.upsert(COLLECTION, points=points)
-        logger.info("Ingéré %s → %d chunks", filename, len(chunks))
-        return {"source": filename, "chunks_count": len(chunks)}
+        logger.info("Ingéré %s → %d chunks", src, len(chunks))
+        return {"source": src, "chunks_count": len(chunks)}
     finally:
         await client.close()
 

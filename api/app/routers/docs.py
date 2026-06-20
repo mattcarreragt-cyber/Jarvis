@@ -5,12 +5,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.auth import require_api_key
+from app.docs.extract import SUPPORTED_EXT
 from app.docs.ingest import ingest_file, list_sources
 
 router = APIRouter(prefix="/api/docs", tags=["docs"])
 
-ALLOWED_EXT = {".txt", ".md", ".pdf"}
-MAX_SIZE_MB = 20
+ALLOWED_EXT = SUPPORTED_EXT
+MAX_SIZE_MB = 50
 
 
 @router.post("/ingest", dependencies=[Depends(require_api_key)])

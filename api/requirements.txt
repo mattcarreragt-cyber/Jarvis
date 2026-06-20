@@ -11,6 +11,10 @@ docker==7.1.0
 pypdf==5.1.0
 python-multipart==0.0.20
 pyyaml==6.0.2
+python-docx==1.1.2
+openpyxl==3.1.5
+python-pptx==1.0.2
+Pillow==11.0.0
 
 # dev / tests
 pytest==8.3.4
