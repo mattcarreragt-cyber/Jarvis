@@ -11,7 +11,8 @@ import re
 
 from app.agents.base import Agent
 from app.contracts import AgentRequest, AgentResponse, AgentSpec, AgentStatus, ToolCall, ToolResult
-from app.docs.search import keyword_search
+from app.docs.search import search
+from app.llm.ollama import chat
 
 # Intentions détectées en langage naturel
 _POST_PAT    = re.compile(r"\b(post|publication|caption|légende|texte|rédige|écris|contenu)\b", re.I)
@@ -39,23 +40,31 @@ class MarketingAgent(Agent):
         msg = request.message
 
         # Recherche dans les docs Xenum ingérés (tags=xenum ou tous si pas de tag)
-        results = await keyword_search(msg, top_k=4, tags_filter=["xenum"])
+        results, method = await search(msg, top_k=4, tags_filter=["xenum"])
         if not results:
-            # Fallback sans filtre tag
-            results = await keyword_search(msg, top_k=4)
+            results, method = await search(msg, top_k=4)
 
         call = ToolCall(
-            tool="docs.keyword_search",
-            args={"query": msg, "top_k": 4},
+            tool="docs.search",
+            args={"query": msg, "top_k": 4, "method": method},
             result=ToolResult(ok=True, data={"hits": len(results)}),
         )
 
-        is_post   = bool(_POST_PAT.search(msg))
-        is_brief  = bool(_BRIEF_PAT.search(msg))
+        is_post    = bool(_POST_PAT.search(msg))
+        is_brief   = bool(_BRIEF_PAT.search(msg))
         is_produit = bool(_PRODUIT_PAT.search(msg))
+        intent = "post" if is_post else "brief" if is_brief else "produit" if is_produit else "generic"
 
+        # Génération LLM réelle si Kubuntu/Ollama dispo
+        generated = await self._llm_generate(intent, msg, results)
+        if generated:
+            return AgentResponse(
+                request_id=request.request_id, agent="marketing",
+                status=AgentStatus.ok, content=generated, tool_calls=[call],
+            )
+
+        # Repli mode keyword : contexte + templates
         context_block = self._format_context(results)
-
         if is_post:
             content = self._assist_post(msg, context_block)
         elif is_brief:
@@ -71,6 +80,32 @@ class MarketingAgent(Agent):
             content=content,
             tool_calls=[call],
         )
+
+    _INTENT_GUIDE = {
+        "post": "Rédige une publication prête à poster (accroche, corps, CTA, 5-8 hashtags). "
+                "Adapte le ton à la marque Xenum.",
+        "brief": "Produis un brief créatif structuré : angles, douleur client, différenciateurs, "
+                 "preuves, ton recommandé.",
+        "produit": "Synthétise les informations produit de façon claire et orientée bénéfices.",
+        "generic": "Aide l'utilisateur sur sa demande marketing en t'appuyant sur les extraits.",
+    }
+
+    async def _llm_generate(self, intent: str, msg: str, results: list[dict]) -> str | None:
+        """Génération via Ollama. None si Kubuntu éteint → repli template."""
+        ctx = "\n\n".join(
+            f"[{r['source']}] {r['text'].strip()}" for r in results
+        ) or "(aucun document de référence ingéré)"
+        system = (
+            "Tu es l'assistant marketing de la marque Xenum, créateur de contenu expert. "
+            "Réponds en français. Appuie-toi sur les extraits de documents fournis comme "
+            "source de vérité produit ; n'invente pas de caractéristiques. "
+            + self._INTENT_GUIDE.get(intent, self._INTENT_GUIDE["generic"])
+        )
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": f"Documents Xenum :\n{ctx}\n\nDemande : {msg}"},
+        ]
+        return await chat(messages, temperature=0.8)
 
     @staticmethod
     def _format_context(results: list[dict]) -> str:

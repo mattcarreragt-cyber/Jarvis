@@ -140,7 +140,7 @@ async def test_sync_not_configured():
 # ─── Agent ───────────────────────────────────────────────────────────────────
 
 async def test_nextcloud_agent_no_results():
-    with patch("app.agents.nextcloud_agent.keyword_search", new=AsyncMock(return_value=[])):
+    with patch("app.agents.nextcloud_agent.search", new=AsyncMock(return_value=([], "keyword"))):
         resp = await NextcloudAgent().handle(AgentRequest(
             request_id="n1", session_id="s1", intent="nextcloud",
             message="mes fichiers sur le cloud",
@@ -149,13 +149,28 @@ async def test_nextcloud_agent_no_results():
     assert "Aucun fichier" in resp.content
 
 
-async def test_nextcloud_agent_with_results():
+async def test_nextcloud_agent_with_results_keyword():
     hits = [{"text": "Contrat Xenum 2026", "source": "nextcloud:/Documents/contrat.pdf",
              "score": 2, "tags": ["nextcloud"]}]
-    with patch("app.agents.nextcloud_agent.keyword_search", new=AsyncMock(return_value=hits)):
+    with patch("app.agents.nextcloud_agent.search", new=AsyncMock(return_value=(hits, "keyword"))), \
+         patch("app.agents.rag_reply.synthesize", new=AsyncMock(return_value=None)):
         resp = await NextcloudAgent().handle(AgentRequest(
             request_id="n2", session_id="s1", intent="nextcloud",
             message="contrat xenum",
         ))
     assert "/Documents/contrat.pdf" in resp.content
     assert "nextcloud:" not in resp.content   # le préfixe est nettoyé à l'affichage
+
+
+async def test_nextcloud_agent_llm_synthesis():
+    hits = [{"text": "Contrat Xenum 2026", "source": "nextcloud:/Documents/contrat.pdf",
+             "score": 0.9, "tags": ["nextcloud"]}]
+    with patch("app.agents.nextcloud_agent.search", new=AsyncMock(return_value=(hits, "semantic"))), \
+         patch("app.agents.rag_reply.synthesize",
+               new=AsyncMock(return_value="Le contrat court jusqu'en 2026 [1].")):
+        resp = await NextcloudAgent().handle(AgentRequest(
+            request_id="n3", session_id="s1", intent="nextcloud",
+            message="jusqu'à quand court le contrat ?",
+        ))
+    assert "2026" in resp.content
+    assert "Sources" in resp.content

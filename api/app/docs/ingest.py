@@ -19,12 +19,14 @@ from qdrant_client import AsyncQdrantClient, models
 
 from app.config import settings
 from app.docs.extract import extract_text
+from app.llm.ollama import EMBED_DIM, embed_batch
 
 logger = logging.getLogger("jarvis.docs")
 
 COLLECTION = "docs"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 80
+VECTOR_SIZE = EMBED_DIM   # 768 (nomic-embed-text) ; vecteur zéro si Ollama absent
 
 
 def _qdrant() -> AsyncQdrantClient:
@@ -34,10 +36,13 @@ def _qdrant() -> AsyncQdrantClient:
 async def _ensure_collection(client: AsyncQdrantClient) -> None:
     existing = {c.name for c in (await client.get_collections()).collections}
     if COLLECTION not in existing:
-        # Vecteur dummy taille 1 — la vraie valeur ne compte pas en mode keyword
+        # Vecteurs nomic-embed-text (768d). En mode keyword pur, on stocke un
+        # vecteur zéro ; la recherche full-text fonctionne indépendamment.
         await client.create_collection(
             COLLECTION,
-            vectors_config=models.VectorParams(size=1, distance=models.Distance.COSINE),
+            vectors_config=models.VectorParams(
+                size=VECTOR_SIZE, distance=models.Distance.COSINE
+            ),
         )
         # Index full-text sur le payload "text" pour MatchText
         await client.create_payload_index(
@@ -117,13 +122,18 @@ async def ingest_file(
     if replace:
         await delete_source(src)
 
+    # Embeddings best-effort : vrais vecteurs si Ollama/Kubuntu dispo, sinon zéro.
+    vectors = await embed_batch(chunks)
+    zero = [0.0] * VECTOR_SIZE
+    embedded_count = sum(1 for v in vectors if v is not None)
+
     client = _qdrant()
     try:
         await _ensure_collection(client)
         points = [
             models.PointStruct(
                 id=str(uuid.uuid4()),
-                vector=[0.0],           # dummy — remplacé par embeddings plus tard
+                vector=vectors[i] if vectors[i] is not None else zero,
                 payload={
                     "text":        chunk,
                     "source":      src,
@@ -131,13 +141,14 @@ async def ingest_file(
                     "chunk_index": i,
                     "kind":        kind,
                     "tags":        tags or [],
+                    "embedded":    vectors[i] is not None,
                 },
             )
             for i, chunk in enumerate(chunks)
         ]
         await client.upsert(COLLECTION, points=points)
-        logger.info("Ingéré %s → %d chunks", src, len(chunks))
-        return {"source": src, "chunks_count": len(chunks)}
+        logger.info("Ingéré %s → %d chunks (%d embeddings)", src, len(chunks), embedded_count)
+        return {"source": src, "chunks_count": len(chunks), "embedded": embedded_count}
     finally:
         await client.close()
 

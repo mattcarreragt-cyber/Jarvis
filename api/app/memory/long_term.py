@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 import uuid
 
-import httpx
 from qdrant_client import AsyncQdrantClient, models
 
 from app.config import settings
@@ -50,17 +49,8 @@ class LongTermMemory:
             return False
 
     async def _embed(self, text: str) -> list[float] | None:
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.post(
-                    f"{self._ollama_url.rstrip('/')}/api/embeddings",
-                    json={"model": EMBED_MODEL, "prompt": text},
-                )
-                r.raise_for_status()
-                return r.json()["embedding"]
-        except Exception as e:  # pragma: no cover
-            logger.warning("Embedding indisponible (Kubuntu éteint ?): %s", e)
-            return None
+        from app.llm.ollama import embed
+        return await embed(text, model=EMBED_MODEL)
 
     async def remember(
         self, text: str, kind: str = "fact", session_id: str | None = None

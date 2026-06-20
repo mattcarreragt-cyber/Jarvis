@@ -7,8 +7,9 @@ embeddings + synthèse LLM quand Kubuntu sera branché.
 from __future__ import annotations
 
 from app.agents.base import Agent
+from app.agents.rag_reply import build_rag_reply
 from app.contracts import AgentRequest, AgentResponse, AgentSpec, AgentStatus, ToolCall, ToolResult
-from app.docs.search import keyword_search
+from app.docs.search import search
 
 
 class NextcloudAgent(Agent):
@@ -26,10 +27,10 @@ class NextcloudAgent(Agent):
         )
 
     async def handle(self, request: AgentRequest) -> AgentResponse:
-        results = await keyword_search(request.message, top_k=6, tags_filter=["nextcloud"])
+        results, method = await search(request.message, top_k=6, tags_filter=["nextcloud"])
         call = ToolCall(
-            tool="nextcloud.keyword_search",
-            args={"query": request.message, "top_k": 6},
+            tool="nextcloud.search",
+            args={"query": request.message, "top_k": 6, "method": method},
             result=ToolResult(ok=True, data={"hits": len(results)}),
         )
 
@@ -43,21 +44,11 @@ class NextcloudAgent(Agent):
                 tool_calls=[call],
             )
 
-        lines = [f"## Nextcloud — {len(results)} extraits pertinents", ""]
-        for i, r in enumerate(results, 1):
-            # source = "nextcloud:/chemin" → on affiche le chemin propre
-            src = r["source"].split("nextcloud:", 1)[-1]
-            lines.append(f"### [{i}] `{src}`  _(score: {r['score']})_")
-            lines.append(r["text"].strip())
-            lines.append("")
-
-        lines.append("---")
-        lines.append("_Mode keyword — l'analyse en langage naturel arrivera avec "
-                     "les embeddings + LLM sur Kubuntu._")
-
+        content = await build_rag_reply(
+            question=request.message, hits=results, method=method,
+            empty_title="Nextcloud — extraits pertinents",
+        )
         return AgentResponse(
             request_id=request.request_id, agent="nextcloud",
-            status=AgentStatus.ok,
-            content="\n".join(lines),
-            tool_calls=[call],
+            status=AgentStatus.ok, content=content, tool_calls=[call],
         )

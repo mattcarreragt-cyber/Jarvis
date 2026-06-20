@@ -11,8 +11,9 @@ En attendant : on retourne les chunks pertinents avec leur source.
 from __future__ import annotations
 
 from app.agents.base import Agent
+from app.agents.rag_reply import build_rag_reply
 from app.contracts import AgentRequest, AgentResponse, AgentSpec, AgentStatus, ToolCall, ToolResult
-from app.docs.search import keyword_search
+from app.docs.search import search
 
 
 class SearchAgent(Agent):
@@ -29,10 +30,10 @@ class SearchAgent(Agent):
         )
 
     async def handle(self, request: AgentRequest) -> AgentResponse:
-        results = await keyword_search(request.message, top_k=5)
+        results, method = await search(request.message, top_k=5)
         call = ToolCall(
-            tool="docs.keyword_search",
-            args={"query": request.message, "top_k": 5},
+            tool="docs.search",
+            args={"query": request.message, "top_k": 5, "method": method},
             result=ToolResult(ok=True, data={"hits": len(results)}),
         )
 
@@ -45,18 +46,11 @@ class SearchAgent(Agent):
                 tool_calls=[call],
             )
 
-        lines = [f"## Résultats de recherche ({len(results)} extraits)", ""]
-        for i, r in enumerate(results, 1):
-            lines.append(f"### [{i}] `{r['source']}`  _(score: {r['score']})_")
-            lines.append(r["text"].strip())
-            lines.append("")
-
-        lines.append("---")
-        lines.append("_Mode keyword — les résultats seront plus précis avec les embeddings Ollama (Kubuntu)._")
-
+        content = await build_rag_reply(
+            question=request.message, hits=results, method=method,
+            empty_title="Résultats de recherche",
+        )
         return AgentResponse(
             request_id=request.request_id, agent="recherche",
-            status=AgentStatus.ok,
-            content="\n".join(lines),
-            tool_calls=[call],
+            status=AgentStatus.ok, content=content, tool_calls=[call],
         )

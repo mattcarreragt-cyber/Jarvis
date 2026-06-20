@@ -19,6 +19,7 @@ from qdrant_client import AsyncQdrantClient, models
 
 from app.config import settings
 from app.docs.ingest import COLLECTION, _ensure_collection
+from app.llm.ollama import embed
 
 logger = logging.getLogger("jarvis.search")
 
@@ -102,3 +103,62 @@ async def keyword_search(
         return []
     finally:
         await client.close()
+
+
+async def semantic_search(
+    query: str,
+    top_k: int = 5,
+    tags_filter: list[str] | None = None,
+) -> list[dict] | None:
+    """Recherche vectorielle (cosine) via embeddings Ollama.
+
+    Retourne None si les embeddings sont indisponibles (Kubuntu éteint) → le
+    caller doit alors retomber sur keyword_search.
+    """
+    vector = await embed(query)
+    if vector is None:
+        return None
+
+    client = AsyncQdrantClient(url=settings.qdrant_url, timeout=5)
+    try:
+        await _ensure_collection(client)
+        flt = None
+        if tags_filter:
+            flt = models.Filter(must=[
+                models.FieldCondition(key="tags", match=models.MatchAny(any=tags_filter)),
+            ])
+        hits = await client.search(
+            COLLECTION, query_vector=vector, limit=top_k,
+            query_filter=flt, with_payload=True,
+        )
+        return [
+            {
+                "text":   (h.payload or {}).get("text", ""),
+                "source": (h.payload or {}).get("source", ""),
+                "tags":   (h.payload or {}).get("tags", []),
+                "score":  round(h.score, 4),
+            }
+            for h in hits
+            if (h.payload or {}).get("embedded", False)   # ignore les chunks vecteur-zéro
+        ]
+    except Exception as e:
+        logger.warning("semantic_search échouée: %s", e)
+        return None
+    finally:
+        await client.close()
+
+
+async def search(
+    query: str,
+    top_k: int = 5,
+    tags_filter: list[str] | None = None,
+) -> tuple[list[dict], str]:
+    """Recherche hybride : sémantique si dispo, sinon keyword.
+
+    Retourne (résultats, méthode) où méthode ∈ {"semantic", "keyword"}.
+    """
+    sem = await semantic_search(query, top_k=top_k, tags_filter=tags_filter)
+    if sem is not None and sem:
+        return sem, "semantic"
+    kw = await keyword_search(query, top_k=top_k, tags_filter=tags_filter)
+    return kw, "keyword"
