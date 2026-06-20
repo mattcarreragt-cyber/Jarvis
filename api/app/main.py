@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.contracts import AgentRequest, AgentResponse, ChatRequest
 from app.health import get_health
+from app.memory import memory
 from app.registry import registry
 from app.router import route
 
@@ -44,13 +45,23 @@ async def chat(req: ChatRequest) -> AgentResponse:
 
     agent = registry.get(decision.agent) or registry.get("echo")
 
+    context = await memory.build_context(req.session_id, req.message)
+
     agent_req = AgentRequest(
         request_id=request_id,
         session_id=req.session_id,
         intent=decision.agent,
         message=req.message,
+        context=context,
     )
-    return await agent.handle(agent_req)
+    response = await agent.handle(agent_req)
+
+    # Persiste les tours en mémoire court terme (tolérant aux pannes).
+    await memory.record_turn(req.session_id, "user", req.message)
+    await memory.record_turn(
+        req.session_id, "assistant", response.content, agent=response.agent
+    )
+    return response
 
 
 @app.get("/", include_in_schema=False)
