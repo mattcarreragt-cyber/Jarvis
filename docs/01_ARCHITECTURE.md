@@ -14,11 +14,34 @@
 └─────────────────────────────┘        └──────────────────────────────┘
 ```
 
-- **Unraid** héberge les services stateless/légers + les bases de données.
-- **Kubuntu** héberge tout ce qui consomme du GPU.
+- **Unraid** = chef d'orchestre. Héberge la **webapp** (dashboard Next.js +
+  FastAPI), les bases de données, et reste **toujours allumé**. C'est le point
+  d'entrée unique : l'utilisateur accède à JARVIS via cette webapp servie par le
+  serveur, depuis n'importe quel appareil du réseau.
+- **Kubuntu** = nœud de calcul GPU (Ollama, ComfyUI, Whisper, Piper). Peut être
+  **éteint** quand inutilisé pour économiser l'énergie.
 - Communication : HTTP(S) sur le LAN. Les endpoints GPU (Ollama, ComfyUI, etc.)
   sont configurés par variables d'environnement (`OLLAMA_BASE_URL`, etc.), jamais
   en dur.
+
+## Wake-on-LAN du nœud de calcul
+
+Kubuntu n'a pas besoin de tourner en permanence. Le chef d'orchestre (Unraid)
+le réveille à la demande :
+
+1. Une requête arrive nécessitant le GPU (chat LLM, image, voix).
+2. FastAPI vérifie la santé du nœud Kubuntu (`GET {OLLAMA_BASE_URL}/...`).
+3. Si injoignable et **WoL activé** (flag de config `KUBUNTU_WOL_ENABLED`),
+   envoie un magic packet à `KUBUNTU_MAC` puis attend (polling santé) jusqu'à
+   `KUBUNTU_WOL_TIMEOUT`.
+4. Réveil OK → la requête poursuit. Sinon → réponse `503` claire (« nœud de
+   calcul indisponible »).
+
+- Le WoL est **activable/désactivable** depuis la config (et idéalement
+  l'UI). Désactivé → comportement classique (erreur si Kubuntu est éteint).
+- L'utilisateur voit un état « réveil en cours… » dans la webapp pendant le WoL.
+- Idéalement, mise en veille auto de Kubuntu après une période d'inactivité
+  (géré côté Kubuntu, hors périmètre v1).
 
 ## Déploiement
 
