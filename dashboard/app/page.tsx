@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud, Volume2, VolumeX, Film } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -11,6 +11,7 @@ import HistoryPanel from '@/components/HistoryPanel'
 import DocUpload from '@/components/DocUpload'
 import NextcloudPanel from '@/components/NextcloudPanel'
 import JobsPanel from '@/components/JobsPanel'
+import MemoryPanel from '@/components/MemoryPanel'
 import { apiFetch, transcribeAudio, speak } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 
@@ -29,7 +30,13 @@ export default function Home() {
   const [showUpload, setShowUpload]   = useState(false)
   const [showCloud, setShowCloud]     = useState(false)
   const [showJobs, setShowJobs]       = useState(false)
+  const [showMemory, setShowMemory]   = useState(false)
   const [voiceOut, setVoiceOut]       = useState(false)
+
+  const closePanels = useCallback(() => {
+    setShowUpload(false); setShowCloud(false); setShowHistory(false)
+    setShowJobs(false); setShowMemory(false)
+  }, [])
 
   const recorder = useVoiceRecorder()
 
@@ -181,7 +188,7 @@ export default function Home() {
             </button>
             {/* Upload doc */}
             <button
-              onClick={() => { setShowUpload(v => !v); setShowHistory(false); setShowCloud(false); setShowJobs(false) }}
+              onClick={() => { const n = !showUpload; closePanels(); setShowUpload(n) }}
               title="Ingérer un document"
               className={`p-1.5 rounded transition-colors ${
                 showUpload
@@ -193,7 +200,7 @@ export default function Home() {
             </button>
             {/* Nextcloud */}
             <button
-              onClick={() => { setShowCloud(v => !v); setShowUpload(false); setShowHistory(false); setShowJobs(false) }}
+              onClick={() => { const n = !showCloud; closePanels(); setShowCloud(n) }}
               title="Nextcloud — RAG local"
               className={`p-1.5 rounded transition-colors ${
                 showCloud
@@ -205,7 +212,7 @@ export default function Home() {
             </button>
             {/* Jobs (générations) */}
             <button
-              onClick={() => { setShowJobs(v => !v); setShowUpload(false); setShowCloud(false); setShowHistory(false) }}
+              onClick={() => { const n = !showJobs; closePanels(); setShowJobs(n) }}
               title="Jobs de génération (vidéo)"
               className={`p-1.5 rounded transition-colors ${
                 showJobs
@@ -215,9 +222,21 @@ export default function Home() {
             >
               <Film size={16} />
             </button>
+            {/* Memory */}
+            <button
+              onClick={() => { const n = !showMemory; closePanels(); setShowMemory(n) }}
+              title="Mémoire long terme"
+              className={`p-1.5 rounded transition-colors ${
+                showMemory
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <Brain size={16} />
+            </button>
             {/* History button */}
             <button
-              onClick={() => { setShowHistory(v => !v); setShowUpload(false); setShowCloud(false); setShowJobs(false) }}
+              onClick={() => { const n = !showHistory; closePanels(); setShowHistory(n) }}
               title="Historique des sessions"
               className={`p-1.5 rounded transition-colors ${
                 showHistory
@@ -257,6 +276,9 @@ export default function Home() {
             )}
             {showJobs && (
               <JobsPanel onClose={() => setShowJobs(false)} />
+            )}
+            {showMemory && (
+              <MemoryPanel onClose={() => setShowMemory(false)} />
             )}
           </AnimatePresence>
         </div>

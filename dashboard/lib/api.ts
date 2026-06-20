@@ -74,6 +74,29 @@ export async function triggerReembed(): Promise<{ ok: boolean; updated?: number;
   return r.json()
 }
 
+export interface MemoryFact {
+  id: string
+  text: string
+  kind: string
+  created_at: string
+}
+
+export async function fetchMemory(): Promise<MemoryFact[]> {
+  const r = await apiFetch('/api/memory')
+  if (!r.ok) return []
+  return (await r.json()).facts
+}
+
+export async function deleteMemory(id: string): Promise<boolean> {
+  const r = await apiFetch(`/api/memory/${id}`, { method: 'DELETE' })
+  return r.ok
+}
+
+export async function clearMemory(): Promise<boolean> {
+  const r = await apiFetch('/api/memory', { method: 'DELETE' })
+  return r.ok
+}
+
 export interface GenJob {
   id: string
   kind: string

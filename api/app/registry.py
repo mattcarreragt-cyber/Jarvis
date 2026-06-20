@@ -9,6 +9,7 @@ from app.agents.echo import EchoAgent
 from app.agents.ha_agent import HomeAssistantAgent
 from app.agents.image_agent import ImageAgent
 from app.agents.marketing_agent import MarketingAgent
+from app.agents.memory_agent import MemoryAgent
 from app.agents.nextcloud_agent import NextcloudAgent
 from app.agents.search_agent import SearchAgent
 from app.agents.system_agent import SystemAgent
@@ -26,6 +27,7 @@ def build_registry() -> AgentRegistry:
     registry.register(SearchAgent())
     registry.register(MarketingAgent())
     registry.register(NextcloudAgent())
+    registry.register(MemoryAgent())
     registry.register(ImageAgent())
     registry.register(VideoAgent())
     registry.register(DevAgent())

@@ -18,6 +18,7 @@ from app.router import route
 from app.routers import docs as docs_router
 from app.routers import images as images_router
 from app.routers import jobs as jobs_router
+from app.routers import memory as memory_router
 from app.routers import nextcloud as nextcloud_router
 from app.routers import sessions
 from app.routers import video as video_router
@@ -60,6 +61,7 @@ app.include_router(images_router.router)
 app.include_router(video_router.router)
 app.include_router(voice_router.router)
 app.include_router(jobs_router.router)
+app.include_router(memory_router.router)
 
 
 @app.get("/api/health", tags=["system"])

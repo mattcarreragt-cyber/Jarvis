@@ -7,6 +7,7 @@ Tout est tolérant aux pannes : un service absent n'empêche pas le chat.
 from __future__ import annotations
 
 from app.contracts import MemoryContext, Turn
+from app.memory import facts
 from app.memory.long_term import LongTermMemory
 from app.memory.short_term import ShortTermMemory
 
@@ -22,10 +23,17 @@ class Memory:
 
     async def build_context(self, session_id: str, message: str) -> MemoryContext:
         recent = await self.short.recent(session_id)
-        relevant = await self.long.recall(message)
+        # Faits durables (Postgres, toujours dispo) + rappel sémantique (Qdrant/Ollama)
+        durable = await facts.search_facts(message)
+        semantic = await self.long.recall(message)
+        # Fusion sans doublons, faits durables d'abord
+        merged: list[str] = []
+        for m in durable + semantic:
+            if m and m not in merged:
+                merged.append(m)
         return MemoryContext(
             recent_turns=recent,
-            relevant_memories=relevant,
+            relevant_memories=merged,
             user_profile={},
         )
 
