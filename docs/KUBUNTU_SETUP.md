@@ -101,25 +101,45 @@ docker compose -f docker-compose.kubuntu.yml ps
 
 ## 5. Télécharger les modèles Ollama
 
+> **Dimensionné pour ta carte 8 Go VRAM + 64 Go RAM.** Voir `config/capabilities.yaml`
+> pour le budget VRAM et le champ `vram_gb` de chaque capacité.
+
 ```bash
 # Attendre qu'Ollama soit lancé (environ 10 secondes)
 sleep 10
 
-# Modèle rapide (chat.fast)
-docker exec kubuntu-ollama ollama pull llama3.1:8b
+# Modèle rapide (chat.fast) — ~5 Go VRAM, 100% GPU
+docker exec kubuntu-ollama ollama pull qwen2.5:7b
 
-# Modèle profond (chat.deep) — ~40 Go, long à télécharger
-docker exec kubuntu-ollama ollama pull llama3.1:70b
+# Modèle profond (chat.deep) — ~9 Go, offload CPU partiel (OK avec 64 Go RAM)
+docker exec kubuntu-ollama ollama pull qwen2.5:14b
 
-# Embeddings (mémoire sémantique)
+# Embeddings (mémoire sémantique) — ~0,5 Go
 docker exec kubuntu-ollama ollama pull nomic-embed-text
 
 # Vérifier les modèles disponibles
 docker exec kubuntu-ollama ollama list
 ```
 
-> **Note :** `llama3.1:70b` requiert ~48 Go de VRAM. Si ta carte n'a pas assez de mémoire,
-> remplace par `llama3.1:8b` pour les deux et mets à jour `config/capabilities.yaml` en conséquence.
+> **Important (8 Go VRAM) :** configure Ollama pour ne garder qu'**un seul modèle**
+> chargé à la fois, sinon `qwen2.5:7b` + `qwen2.5:14b` tenteraient de cohabiter et
+> satureraient la VRAM. Ajoute ces variables au service `ollama` de
+> `docker-compose.kubuntu.yml` :
+>
+> ```yaml
+>     environment:
+>       OLLAMA_MAX_LOADED_MODELS: "1"   # un seul LLM résident à la fois
+>       OLLAMA_KEEP_ALIVE: "5m"          # décharge après 5 min d'inactivité
+> ```
+>
+> Le scheduler de JARVIS décharge en plus automatiquement les LLM avant une
+> génération d'image (ComfyUI/SDXL occupe quasiment tout le GPU). Voir
+> `_free_vram_for()` dans `api/app/orchestration/scheduler.py`.
+
+> **Modèle plus profond (optionnel)** : `qwen2.5:32b` (~20 Go) tournera surtout
+> en RAM/CPU (lent mais possible avec tes 64 Go). Si tu le veux, pull-le et passe
+> `chat.deep` dessus dans `capabilities.yaml` + `CHAT_MODEL_DEEP` dans
+> `api/app/llm/ollama.py`.
 
 ---
 

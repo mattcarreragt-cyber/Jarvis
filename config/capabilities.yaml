@@ -1,50 +1,69 @@
 # Capability Registry — mappe capacité → (machine, backend, modèle, GPU)
 # Rechargeable à chaud sans redémarrer l'API.
 # Voir docs/08_ORCHESTRATION.md
+#
+# ┌─ DIMENSIONNEMENT MATÉRIEL (nœud Kubuntu) ─────────────────────────────────┐
+# │ GPU : 8 Go VRAM   |   RAM système : 64 Go                                  │
+# │ Budget VRAM : ~8 Go. On NE PEUT PAS co-charger un gros LLM + SDXL +        │
+# │ Whisper en même temps. Le champ `vram_gb` estime l'empreinte de chaque    │
+# │ capacité ; le scheduler décharge un modèle avant d'en charger un autre    │
+# │ si le budget serait dépassé. Les 64 Go de RAM permettent l'offload CPU    │
+# │ partiel des couches qui débordent (chat.deep), au prix de la vitesse.     │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+vram_budget_gb: 8
 
 capabilities:
 
   chat.fast:
     machine: kubuntu
     backend: ollama
-    model: llama3.1:8b
+    model: qwen2.5:7b
     gpu: true
-    description: "Réponse rapide, reformulation, tâches courtes"
+    vram_gb: 5
+    description: "Réponse rapide, reformulation, tâches courtes (100% GPU)"
 
   chat.deep:
     machine: kubuntu
     backend: ollama
-    model: llama3.1:70b
+    model: qwen2.5:14b
     gpu: true
-    description: "Raisonnement, stratégie, analyse, code complexe"
+    vram_gb: 9          # déborde un peu → offload CPU partiel (RAM 64 Go)
+    description: "Raisonnement, stratégie, analyse, code complexe (offload CPU partiel)"
 
   embeddings:
     machine: kubuntu
     backend: ollama
     model: nomic-embed-text
     gpu: true
-    description: "Génération d'embeddings pour la mémoire sémantique"
+    vram_gb: 1
+    description: "Génération d'embeddings pour la mémoire sémantique (très léger)"
 
   stt:
     machine: kubuntu
     backend: faster-whisper
     model: large-v3
+    compute_type: int8_float16   # réduit l'empreinte VRAM sur 8 Go
     gpu: true
-    description: "Transcription audio → texte"
+    vram_gb: 3
+    description: "Transcription audio → texte (à la demande)"
 
   tts:
     machine: unraid
     backend: piper
     model: fr_FR-upmc-medium
     gpu: false
-    description: "Synthèse vocale texte → audio (CPU, Kubuntu non requis)"
+    vram_gb: 0
+    description: "Synthèse vocale texte → audio (CPU Unraid, Kubuntu non requis)"
 
   image:
     machine: kubuntu
     backend: comfyui
     model: sdxl
     gpu: true
-    description: "Génération d'images"
+    vram_gb: 8          # serré : ne pas co-charger avec un LLM
+    exclusive: true     # nécessite de décharger les autres modèles GPU d'abord
+    description: "Génération d'images (occupe quasiment tout le GPU 8 Go)"
 
 # Politique de sélection chat (utilisée par le Scheduler)
 # L'agent peut surcharger avec hint: fast | deep

@@ -18,8 +18,8 @@ logger = logging.getLogger("jarvis.llm")
 
 EMBED_MODEL = "nomic-embed-text"
 EMBED_DIM = 768                     # dimension de nomic-embed-text
-CHAT_MODEL_FAST = "llama3.1:8b"
-CHAT_MODEL_DEEP = "llama3.1:70b"
+CHAT_MODEL_FAST = "qwen2.5:7b"      # ~5 Go VRAM — tient sur 8 Go (100% GPU)
+CHAT_MODEL_DEEP = "qwen2.5:14b"     # ~9 Go — offload CPU partiel (RAM 64 Go)
 
 _EMBED_TIMEOUT = 15
 _CHAT_TIMEOUT = 120
@@ -37,6 +37,42 @@ async def health() -> bool:
             return r.status_code < 500
     except Exception:
         return False
+
+
+async def ps() -> list[dict]:
+    """Modèles actuellement chargés en VRAM par Ollama (GET /api/ps)."""
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(f"{_base()}/api/ps")
+            r.raise_for_status()
+            return r.json().get("models", [])
+    except Exception:
+        return []
+
+
+async def unload(model: str) -> bool:
+    """Décharge un modèle de la VRAM (keep_alive=0)."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                f"{_base()}/api/generate",
+                json={"model": model, "keep_alive": 0},
+            )
+            return r.status_code < 500
+    except Exception as e:
+        logger.debug("unload %s échoué: %s", model, e)
+        return False
+
+
+async def unload_all() -> int:
+    """Décharge tous les modèles LLM chargés. Retourne le nombre déchargé."""
+    models = await ps()
+    n = 0
+    for m in models:
+        name = m.get("name") or m.get("model", "")
+        if name and await unload(name):
+            n += 1
+    return n
 
 
 async def embed(text: str, model: str = EMBED_MODEL) -> list[float] | None:

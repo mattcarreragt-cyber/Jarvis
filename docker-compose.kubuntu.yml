@@ -9,6 +9,10 @@ services:
     restart: unless-stopped
     ports:
       - "11434:11434"
+    environment:
+      # GPU 8 Go : un seul LLM résident à la fois (évite la saturation VRAM)
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_KEEP_ALIVE: "5m"      # décharge le modèle après 5 min d'inactivité
     volumes:
       - ollama_data:/root/.ollama
     deploy:

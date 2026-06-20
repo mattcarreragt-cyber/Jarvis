@@ -68,3 +68,41 @@ async def test_dispatch_gpu_kubuntu_offline_wol_fail():
         result = await dispatch("chat.deep")
     assert result["ok"] is False
     assert "Kubuntu" in result["error"]
+
+
+# ─── Budget VRAM (GPU 8 Go) ──────────────────────────────────────────────────
+
+async def test_dispatch_image_unloads_all_llms():
+    """Capacité image (exclusive) → décharge tous les LLM Ollama avant de charger."""
+    from app.orchestration.scheduler import dispatch
+    with patch("app.orchestration.scheduler.is_kubuntu_alive", new=AsyncMock(return_value=True)), \
+         patch("app.llm.ollama.unload_all", new=AsyncMock(return_value=2)) as mock_unload, \
+         patch("app.llm.ollama.ps", new=AsyncMock(return_value=[])):
+        result = await dispatch("image")
+    assert result["ok"] is True
+    mock_unload.assert_awaited_once()
+
+
+async def test_dispatch_chat_within_budget_keeps_models():
+    """chat.fast avec peu de VRAM utilisée → pas de déchargement."""
+    from app.orchestration.scheduler import dispatch
+    loaded = [{"name": "qwen2.5:7b", "size_vram": 5_000_000_000}]  # 5 Go, sous budget
+    with patch("app.orchestration.scheduler.is_kubuntu_alive", new=AsyncMock(return_value=True)), \
+         patch("app.llm.ollama.ps", new=AsyncMock(return_value=loaded)), \
+         patch("app.llm.ollama.unload_all", new=AsyncMock(return_value=0)) as mock_unload:
+        result = await dispatch("chat.fast")
+    assert result["ok"] is True
+    mock_unload.assert_not_awaited()
+
+
+async def test_dispatch_chat_over_budget_unloads():
+    """chat.deep alors qu'un gros modèle est déjà résident → dépasse 8 Go → déchargement."""
+    from app.orchestration.scheduler import dispatch
+    loaded = [{"name": "other", "size_vram": 7_000_000_000}]  # 7 Go + besoin 9 > 8
+    with patch("app.orchestration.scheduler.is_kubuntu_alive", new=AsyncMock(return_value=True)), \
+         patch("app.llm.ollama.ps", new=AsyncMock(return_value=loaded)), \
+         patch("app.llm.ollama.unload_all", new=AsyncMock(return_value=1)) as mock_unload:
+        result = await dispatch("chat.deep")
+    assert result["ok"] is True
+    assert result["vram_gb"] == 9
+    mock_unload.assert_awaited_once()

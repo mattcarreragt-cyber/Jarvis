@@ -94,6 +94,8 @@ async def dispatch(capability: str) -> dict[str, Any]:
                     "model":    cap.get("model"),
                     "gpu":      gpu,
                 }
+        # Budget VRAM (GPU 8 Go) : libère la place si nécessaire.
+        await _free_vram_for(cap)
 
     return {
         "ok":      True,
@@ -101,4 +103,45 @@ async def dispatch(capability: str) -> dict[str, Any]:
         "backend": cap.get("backend"),
         "model":   cap.get("model"),
         "gpu":     gpu,
+        "vram_gb": cap.get("vram_gb"),
     }
+
+
+async def _free_vram_for(cap: dict[str, Any]) -> None:
+    """Libère de la VRAM avant de charger la capacité demandée (best-effort).
+
+    - Capacité `exclusive` (ex. image/ComfyUI) : décharge TOUS les modèles Ollama,
+      car ComfyUI et Ollama ne partagent pas la même VRAM visible.
+    - Sinon : si l'empreinte cumulée dépasserait le budget, décharge les LLM
+      résidents (Ollama recharge à la demande ; OLLAMA_MAX_LOADED_MODELS=1
+      recommandé côté Kubuntu, voir KUBUNTU_SETUP.md).
+    """
+    from app.llm import ollama
+
+    data = _load()
+    budget = data.get("vram_budget_gb", 8)
+    need = cap.get("vram_gb", 0) or 0
+
+    if cap.get("exclusive"):
+        freed = await ollama.unload_all()
+        if freed:
+            logger.info("VRAM : %d modèle(s) Ollama déchargé(s) pour capacité exclusive", freed)
+        return
+
+    # Backend ollama : Ollama gère lui-même l'éviction LLM↔LLM si MAX_LOADED_MODELS=1.
+    # On intervient seulement si d'AUTRES modèles résidents + le besoin > budget.
+    if cap.get("backend") == "ollama":
+        target = cap.get("model")
+        loaded = await ollama.ps()
+        # Si le modèle cible est déjà chargé, rien à faire.
+        if any((m.get("name") or m.get("model")) == target for m in loaded):
+            return
+        used_others = sum(
+            m.get("size_vram", 0) / 1e9
+            for m in loaded
+            if (m.get("name") or m.get("model")) != target
+        )
+        if used_others + need > budget and loaded:
+            freed = await ollama.unload_all()
+            logger.info("VRAM : budget dépassé (%.1f+%.1f>%d) → %d modèle(s) déchargé(s)",
+                        used_others, need, budget, freed)
