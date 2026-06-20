@@ -9,13 +9,32 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import os
+
 import yaml
 
 from app.orchestration.wol import ensure_kubuntu, is_kubuntu_alive
 
 logger = logging.getLogger("jarvis.scheduler")
 
-_CAPS_PATH = Path(__file__).parent.parent.parent.parent / "config" / "capabilities.yaml"
+_HERE = Path(__file__).resolve()
+# Candidats, dans l'ordre : variable d'env, volume conteneur, racine repo (dev).
+_CANDIDATES = [
+    os.getenv("CAPABILITIES_PATH"),
+    "/app/config/capabilities.yaml",
+    str(_HERE.parent.parent.parent / "config" / "capabilities.yaml"),   # api/config (volume)
+    str(_HERE.parent.parent.parent.parent / "config" / "capabilities.yaml"),  # racine repo (dev)
+]
+
+
+def _resolve_path() -> Path:
+    for cand in _CANDIDATES:
+        if cand and Path(cand).is_file():
+            return Path(cand)
+    raise FileNotFoundError(
+        f"capabilities.yaml introuvable. Cherché : {[c for c in _CANDIDATES if c]}"
+    )
+
 
 _cache: dict[str, Any] | None = None
 
@@ -23,7 +42,7 @@ _cache: dict[str, Any] | None = None
 def _load() -> dict[str, Any]:
     global _cache
     if _cache is None:
-        with open(_CAPS_PATH) as f:
+        with open(_resolve_path()) as f:
             _cache = yaml.safe_load(f)
     return _cache
 

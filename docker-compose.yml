@@ -31,6 +31,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # État Unraid (array, disques) — read-only, fichiers de l'hôte
       - /var/local/emhttp:/var/local/emhttp:ro
+      # Capability Registry — éditable à chaud sur l'hôte sans rebuild
+      - ./config:/app/config:ro
     environment:
       DOCKER_SOCKET: /var/run/docker.sock
       UNRAID_EMHTTP_PATH: /var/local/emhttp
