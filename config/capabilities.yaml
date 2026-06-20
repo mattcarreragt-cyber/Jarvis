@@ -1,0 +1,59 @@
+# Capability Registry — mappe capacité → (machine, backend, modèle, GPU)
+# Rechargeable à chaud sans redémarrer l'API.
+# Voir docs/08_ORCHESTRATION.md
+
+capabilities:
+
+  chat.fast:
+    machine: kubuntu
+    backend: ollama
+    model: llama3.1:8b
+    gpu: true
+    description: "Réponse rapide, reformulation, tâches courtes"
+
+  chat.deep:
+    machine: kubuntu
+    backend: ollama
+    model: llama3.1:70b
+    gpu: true
+    description: "Raisonnement, stratégie, analyse, code complexe"
+
+  embeddings:
+    machine: kubuntu
+    backend: ollama
+    model: nomic-embed-text
+    gpu: true
+    description: "Génération d'embeddings pour la mémoire sémantique"
+
+  stt:
+    machine: kubuntu
+    backend: faster-whisper
+    model: large-v3
+    gpu: true
+    description: "Transcription audio → texte"
+
+  tts:
+    machine: unraid
+    backend: piper
+    model: fr_FR-upmc-medium
+    gpu: false
+    description: "Synthèse vocale texte → audio (CPU, Kubuntu non requis)"
+
+  image:
+    machine: kubuntu
+    backend: comfyui
+    model: sdxl
+    gpu: true
+    description: "Génération d'images"
+
+# Politique de sélection chat (utilisée par le Scheduler)
+# L'agent peut surcharger avec hint: fast | deep
+chat_policy:
+  default: fast
+  deep_triggers:
+    - "stratégie"
+    - "analyse"
+    - "réflexion"
+    - "brainstorming"
+    - "code"
+    - "architecture"
