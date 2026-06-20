@@ -3,6 +3,19 @@ name: jarvis
 
 services:
 
+  dashboard:
+    build:
+      context: ./dashboard
+      args:
+        NEXT_PUBLIC_API_URL: http://${HOST_IP:-localhost}:8000
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - jarvis
+
   api:
     build: ./api
     restart: unless-stopped

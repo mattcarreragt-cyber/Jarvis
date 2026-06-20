@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  --cyan:      #00d4ff;
+  --cyan-dim:  #0088cc;
+  --cyan-dark: #003a55;
+  --bg:        #020d14;
+  --bg-panel:  rgba(0, 18, 32, 0.88);
+  --text:      #c8eeff;
+  --text-dim:  #4a7a96;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', 'Lucida Console', monospace;
+}
+
+/* ── Glow text ─────────────────────────────── */
+.glow       { text-shadow: 0 0 8px var(--cyan), 0 0 24px var(--cyan-dim); }
+.glow-sm    { text-shadow: 0 0 4px var(--cyan); }
+.glow-panel { box-shadow: 0 0 30px rgba(0, 212, 255, 0.08), inset 0 0 30px rgba(0, 212, 255, 0.03); }
+
+/* ── Panel ──────────────────────────────────── */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid rgba(0, 212, 255, 0.18);
+  border-radius: 8px;
+  backdrop-filter: blur(14px);
+}
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--cyan-dark); border-radius: 2px; }
+
+/* ── Ring animations ────────────────────────── */
+@keyframes spin-cw    { to { transform: rotate(360deg);  } }
+@keyframes spin-ccw   { to { transform: rotate(-360deg); } }
+@keyframes orb-pulse  {
+  0%, 100% { opacity: 0.7; transform: scale(1);    }
+  50%       { opacity: 1;   transform: scale(1.06); }
+}
+@keyframes listen-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1);    }
+  50%       { opacity: 1;   transform: scale(1.15); }
+}
+@keyframes think-dash {
+  to { stroke-dashoffset: -628; }
+}
+@keyframes flicker {
+  0%, 94%, 100% { opacity: 1;   }
+  95%            { opacity: 0.7; }
+}
+@keyframes scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* States */
+.ring-slow   { animation: spin-cw  14s linear infinite; }
+.ring-medium { animation: spin-ccw  9s linear infinite; }
+.ring-fast   { animation: spin-cw   5s linear infinite; }
+
+.state-listening .ring-slow   { animation-duration: 3s; }
+.state-listening .ring-medium { animation-duration: 2s; }
+.state-listening .ring-fast   { animation-duration: 1s; }
+
+.state-thinking .ring-slow   { animation-duration: 1.5s; }
+.state-thinking .ring-medium { animation-duration: 1s; }
+.state-thinking .ring-fast   { animation-duration: 0.5s; }
+
+.state-speaking .ring-slow   { animation-duration: 2.5s; }
+.state-speaking .ring-medium { animation-duration: 1.5s; }
+.state-speaking .ring-fast   { animation-duration: 0.8s; }
+
+.orb-core      { animation: orb-pulse    3s ease-in-out infinite; }
+.orb-listening { animation: listen-pulse 0.6s ease-in-out infinite; }
+.hud-flicker   { animation: flicker      7s ease-in-out infinite; }
