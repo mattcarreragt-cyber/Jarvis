@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     whisper_base_url: str = "http://localhost:9000"
     piper_base_url: str = "http://localhost:5000"
 
+    # Génération d'images (ComfyUI / SDXL)
+    comfyui_checkpoint: str = "sd_xl_base_1.0.safetensors"
+    comfyui_steps: int = 25
+    comfyui_width: int = 1024
+    comfyui_height: int = 1024
+    comfyui_timeout: int = 180   # secondes max pour une génération
+
     # API
     secret_key: str = "changeme"
     api_key: str = ""            # vide = auth désactivée (dev). Obligatoire en prod.

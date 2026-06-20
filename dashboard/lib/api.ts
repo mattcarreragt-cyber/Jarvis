@@ -1,6 +1,11 @@
 const API  = process.env.NEXT_PUBLIC_API_URL  ?? 'http://localhost:8000'
 const KEY  = process.env.NEXT_PUBLIC_API_KEY  ?? ''
 
+/** Construit une URL absolue vers l'API à partir d'un chemin relatif. */
+export function apiUrl(path: string): string {
+  return path.startsWith('http') ? path : `${API}${path}`
+}
+
 export function apiHeaders(): HeadersInit {
   return KEY ? { 'Content-Type': 'application/json', 'X-API-Key': KEY }
              : { 'Content-Type': 'application/json' }

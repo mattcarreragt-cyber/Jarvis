@@ -143,6 +143,36 @@ docker exec kubuntu-ollama ollama list
 
 ---
 
+## 5bis. Modèle SDXL pour ComfyUI (génération d'images)
+
+L'agent `image` utilise ComfyUI. Il faut télécharger un checkpoint SDXL dans le
+dossier `checkpoints` de ComfyUI (volume `comfyui_models`).
+
+```bash
+# Télécharger SDXL base (~6.6 Go) dans le volume monté par ComfyUI
+docker exec jarvis-compute-comfyui-1 sh -c '
+  cd /opt/ComfyUI/models/checkpoints && \
+  wget -O sd_xl_base_1.0.safetensors \
+  https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors
+'
+# (adapte le nom du conteneur si besoin : docker ps | grep comfyui)
+```
+
+> Le nom du fichier doit correspondre à `COMFYUI_CHECKPOINT` (défaut
+> `sd_xl_base_1.0.safetensors`, configurable dans le `.env` Unraid).
+
+> **VRAM 8 Go :** SDXL occupe quasiment tout le GPU. C'est pour ça que la capacité
+> `image` est marquée `exclusive` dans `capabilities.yaml` — JARVIS décharge
+> automatiquement les modèles Ollama avant chaque génération, puis Ollama les
+> recharge à la demande pour le chat suivant.
+
+Test rapide depuis Unraid :
+```bash
+curl "http://KUBUNTU_IP:8188/system_stats"   # ComfyUI répond
+```
+
+---
+
 ## 6. Faster-Whisper (STT)
 
 Le service est inclus dans `docker-compose.kubuntu.yml` (image `onerahmet/openai-whisper-asr-webservice`).  

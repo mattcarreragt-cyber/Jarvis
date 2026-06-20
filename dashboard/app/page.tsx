@@ -47,6 +47,7 @@ export default function Home() {
         content: data.content || '…',
         agent: data.agent,
         confirmation: data.status === 'needs_confirmation' ? data.confirmation as ConfirmationData : undefined,
+        artifacts: data.artifacts,
       })
       setTimeout(() => setOrbState('idle'), 1500)
     } catch {

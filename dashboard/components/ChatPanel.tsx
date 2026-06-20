@@ -3,12 +3,19 @@
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, XCircle } from 'lucide-react'
+import { apiUrl } from '@/lib/api'
 
 export interface ConfirmationData {
   request_id: string
   tool: string
   args: Record<string, unknown>
   summary: string
+}
+
+export interface ImageArtifact {
+  kind: string
+  name: string
+  url: string
 }
 
 export interface Message {
@@ -18,6 +25,7 @@ export interface Message {
   agent?: string
   confirmation?: ConfirmationData
   confirmResolved?: boolean
+  artifacts?: ImageArtifact[]
 }
 
 interface Props {
@@ -68,6 +76,18 @@ export default function ChatPanel({ messages, loading, onConfirm }: Props) {
                 </span>
               )}
               <span className="whitespace-pre-wrap">{msg.content}</span>
+
+              {/* Image artifacts */}
+              {msg.artifacts?.filter(a => a.kind === 'image').map((a, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={apiUrl(a.url)}
+                  alt={a.name}
+                  className="mt-2 rounded-lg border border-[rgba(0,212,255,0.25)] max-w-full"
+                  style={{ maxHeight: 420 }}
+                />
+              ))}
 
               {/* Confirmation buttons */}
               {msg.confirmation && !msg.confirmResolved && onConfirm && (
