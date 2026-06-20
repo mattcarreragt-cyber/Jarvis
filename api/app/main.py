@@ -11,6 +11,7 @@ from app.health import get_health
 from app.memory import memory
 from app.registry import registry
 from app.router import route
+from app.routers import docs as docs_router
 from app.routers import sessions
 
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +27,7 @@ app.add_middleware(
 )
 
 app.include_router(sessions.router)
+app.include_router(docs_router.router)
 
 
 @app.get("/api/health", tags=["system"])

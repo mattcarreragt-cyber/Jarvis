@@ -9,6 +9,7 @@ wakeonlan==3.1.0
 psutil==6.1.0
 alembic==1.14.0
 docker==7.1.0
+pypdf==5.1.0
 
 # dev / tests
 pytest==8.3.4

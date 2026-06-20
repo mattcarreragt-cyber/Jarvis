@@ -2,12 +2,13 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History } from 'lucide-react'
+import { History, Upload } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
 import StatusBar from '@/components/StatusBar'
 import HistoryPanel from '@/components/HistoryPanel'
+import DocUpload from '@/components/DocUpload'
 import { apiFetch } from '@/lib/api'
 
 let msgCounter = 0
@@ -22,6 +23,7 @@ export default function Home() {
   const [loading, setLoading]       = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [showUpload, setShowUpload]   = useState(false)
 
   const addMsg = useCallback((msg: Omit<Message, 'id'>) =>
     setMessages(prev => [...prev, { ...msg, id: uid() }]), [])
@@ -120,9 +122,21 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Upload doc */}
+            <button
+              onClick={() => { setShowUpload(v => !v); setShowHistory(false) }}
+              title="Ingérer un document"
+              className={`p-1.5 rounded transition-colors ${
+                showUpload
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <Upload size={16} />
+            </button>
             {/* History button */}
             <button
-              onClick={() => setShowHistory(v => !v)}
+              onClick={() => { setShowHistory(v => !v); setShowUpload(false) }}
               title="Historique des sessions"
               className={`p-1.5 rounded transition-colors ${
                 showHistory
@@ -153,6 +167,9 @@ export default function Home() {
                 onRestore={restoreSession}
                 onClose={() => setShowHistory(false)}
               />
+            )}
+            {showUpload && (
+              <DocUpload onClose={() => setShowUpload(false)} />
             )}
           </AnimatePresence>
         </div>
