@@ -13,7 +13,7 @@ from app.contracts import RouteDecision
 
 HIGH_CONFIDENCE = 1.0   # au moins un keyword matché
 MARGIN = 0.0            # marge minimale avec le 2e (souple au départ)
-DEFAULT_AGENT = "echo"  # agent de conversation par défaut
+DEFAULT_AGENT = "chat"  # agent de conversation généraliste par défaut
 
 
 def _score(message: str, keywords: list[str]) -> float:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.agents.base import AgentRegistry
+from app.agents.chat_agent import ChatAgent
 from app.agents.dev_agent import DevAgent
 from app.agents.echo import EchoAgent
 from app.agents.ha_agent import HomeAssistantAgent
@@ -16,6 +17,7 @@ from app.agents.unraid_agent import UnraidAgent
 def build_registry() -> AgentRegistry:
     registry = AgentRegistry()
     registry.register(EchoAgent())
+    registry.register(ChatAgent())
     registry.register(SystemAgent())
     registry.register(UnraidAgent())
     registry.register(HomeAssistantAgent())

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Cloud, CloudOff, X, RefreshCw, FileStack, Clock } from 'lucide-react'
-import { fetchNextcloudStatus, triggerNextcloudSync, NextcloudStatus } from '@/lib/api'
+import { Cloud, CloudOff, X, RefreshCw, FileStack, Clock, Sparkles } from 'lucide-react'
+import { fetchNextcloudStatus, triggerNextcloudSync, triggerReembed, NextcloudStatus } from '@/lib/api'
 
 interface Props { onClose: () => void }
 
@@ -11,6 +11,8 @@ export default function NextcloudPanel({ onClose }: Props) {
   const [status, setStatus] = useState<NextcloudStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [reembedding, setReembedding] = useState(false)
+  const [reembedMsg, setReembedMsg] = useState('')
 
   const load = useCallback(async () => {
     const s = await fetchNextcloudStatus()
@@ -29,6 +31,16 @@ export default function NextcloudPanel({ onClose }: Props) {
     setSyncing(true)
     await triggerNextcloudSync()
     setTimeout(load, 1500)
+  }
+
+  const onReembed = async () => {
+    setReembedding(true)
+    setReembedMsg('')
+    const res = await triggerReembed()
+    setReembedMsg(res.ok
+      ? `${res.updated ?? 0} extraits ré-indexés (sémantique activée)`
+      : `Indisponible : ${res.error ?? 'Kubuntu éteint ?'}`)
+    setReembedding(false)
   }
 
   const fmtDate = (iso: string | null) =>
@@ -100,6 +112,26 @@ export default function NextcloudPanel({ onClose }: Props) {
               <Clock size={11} />
               La sync incrémentale n'ingère que les fichiers nouveaux ou modifiés.
             </p>
+
+            {/* Ré-embedding (active la recherche sémantique une fois Kubuntu en ligne) */}
+            <div className="border-t border-[rgba(0,212,255,0.1)] pt-4 mt-1 flex flex-col gap-2">
+              <button
+                onClick={onReembed}
+                disabled={reembedding}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded
+                           border border-[rgba(0,212,255,0.3)] text-[var(--text-dim)] text-[11px] tracking-widest
+                           hover:text-[var(--cyan)] hover:border-[var(--cyan)] transition-colors disabled:opacity-50"
+              >
+                <Sparkles size={13} className={reembedding ? 'animate-pulse' : ''} />
+                {reembedding ? 'RÉ-INDEXATION…' : 'RÉ-INDEXER (EMBEDDINGS)'}
+              </button>
+              {reembedMsg && (
+                <p className="text-[10px] text-[var(--text-dim)] text-center">{reembedMsg}</p>
+              )}
+              <p className="text-[10px] text-[var(--text-dim)] opacity-60 text-center">
+                Encode les documents ajoutés pendant que Kubuntu dormait.
+              </p>
+            </div>
           </>
         )}
       </div>

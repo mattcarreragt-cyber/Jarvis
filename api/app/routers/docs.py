@@ -45,6 +45,17 @@ async def list_docs():
     return await list_sources()
 
 
+@router.post("/reembed", dependencies=[Depends(require_api_key)])
+async def reembed():
+    """Ré-encode les chunks ingérés en mode keyword (embedded=false).
+
+    À lancer une fois Kubuntu en ligne pour activer la recherche sémantique
+    sur les documents ajoutés pendant que le GPU dormait.
+    """
+    from app.docs.reembed import reembed_pending
+    return await reembed_pending()
+
+
 @router.delete("/source", dependencies=[Depends(require_api_key)])
 async def delete_source(source: str):
     """Supprime tous les chunks d'un document par son nom."""

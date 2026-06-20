@@ -62,3 +62,9 @@ export async function triggerNextcloudSync(): Promise<boolean> {
   const r = await apiFetch('/api/nextcloud/sync?background=true', { method: 'POST' })
   return r.ok
 }
+
+export async function triggerReembed(): Promise<{ ok: boolean; updated?: number; error?: string }> {
+  const r = await apiFetch('/api/docs/reembed', { method: 'POST' })
+  if (!r.ok) return { ok: false, error: `HTTP ${r.status}` }
+  return r.json()
+}

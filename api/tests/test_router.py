@@ -36,9 +36,10 @@ def test_keyword_match_routes_to_agent(registry):
     assert decision.score >= 1.0
 
 
-def test_no_match_falls_back_to_echo(registry):
+def test_no_match_falls_back_to_default_chat(registry):
+    # L'agent par défaut du router est désormais "chat" (conversation généraliste)
     decision = route("raconte-moi une blague", registry)
-    assert decision.agent == "echo"
+    assert decision.agent == "chat"
 
 
 def test_force_agent_bypasses_rules(registry):
