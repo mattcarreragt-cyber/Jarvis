@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     comfyui_height: int = 1024
     comfyui_timeout: int = 180   # secondes max pour une génération
 
+    # Génération de vidéo (ComfyUI / AnimateDiff) — workflow paramétrable par template
+    video_workflow_path: str = "config/comfyui_video_workflow.json"
+    video_fps: int = 16
+    video_default_seconds: int = 10
+    video_max_seconds: int = 20
+    video_max_frames: int = 320   # garde-fou technique (pas de contenu) anti-OOM
+    video_timeout: int = 1800     # 30 min max pour un job vidéo
+
     # API
     secret_key: str = "changeme"
     api_key: str = ""            # vide = auth désactivée (dev). Obligatoire en prod.

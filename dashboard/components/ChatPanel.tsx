@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, XCircle } from 'lucide-react'
 import { apiUrl } from '@/lib/api'
+import VideoArtifact from './VideoArtifact'
 
 export interface ConfirmationData {
   request_id: string
@@ -77,17 +78,21 @@ export default function ChatPanel({ messages, loading, onConfirm }: Props) {
               )}
               <span className="whitespace-pre-wrap">{msg.content}</span>
 
-              {/* Image artifacts */}
-              {msg.artifacts?.filter(a => a.kind === 'image').map((a, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={i}
-                  src={apiUrl(a.url)}
-                  alt={a.name}
-                  className="mt-2 rounded-lg border border-[rgba(0,212,255,0.25)] max-w-full"
-                  style={{ maxHeight: 420 }}
-                />
-              ))}
+              {/* Media artifacts */}
+              {msg.artifacts?.map((a, i) =>
+                a.kind === 'image' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={i}
+                    src={apiUrl(a.url)}
+                    alt={a.name}
+                    className="mt-2 rounded-lg border border-[rgba(0,212,255,0.25)] max-w-full"
+                    style={{ maxHeight: 420 }}
+                  />
+                ) : a.kind === 'video_job' ? (
+                  <VideoArtifact key={i} statusUrl={a.url} />
+                ) : null
+              )}
 
               {/* Confirmation buttons */}
               {msg.confirmation && !msg.confirmResolved && onConfirm && (

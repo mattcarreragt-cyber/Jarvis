@@ -173,6 +173,58 @@ curl "http://KUBUNTU_IP:8188/system_stats"   # ComfyUI répond
 
 ---
 
+## 5ter. Génération de vidéo (ComfyUI + AnimateDiff)
+
+L'agent `video` produit des clips 10-20 s (512×512) en **asynchrone** via
+AnimateDiff + fenêtres de contexte glissantes — la seule approche viable sur 8 Go.
+
+### Nœuds custom ComfyUI requis
+
+```bash
+# Dans le conteneur ComfyUI, installer les custom nodes
+docker exec jarvis-compute-comfyui-1 sh -c '
+  cd /opt/ComfyUI/custom_nodes && \
+  git clone https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved.git && \
+  git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
+'
+# Redémarrer ComfyUI
+docker restart jarvis-compute-comfyui-1
+```
+
+### Modèles requis
+
+```bash
+docker exec jarvis-compute-comfyui-1 sh -c '
+  # Checkpoint SD1.5 (~4 Go)
+  cd /opt/ComfyUI/models/checkpoints && \
+  wget -O v1-5-pruned-emaonly.safetensors \
+  https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors && \
+  # Module de mouvement AnimateDiff (~1.7 Go)
+  mkdir -p /opt/ComfyUI/models/animatediff_models && \
+  cd /opt/ComfyUI/models/animatediff_models && \
+  wget -O mm_sd_v15_v2.ckpt \
+  https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt
+'
+```
+
+> **Le workflow est paramétrable.** JARVIS lit `config/comfyui_video_workflow.json`
+> (monté en volume sur Unraid) et y injecte le prompt, le nombre de frames et le fps
+> via les tokens `__PROMPT__`, `__NEG__`, `__FRAMES__`, `__FPS__`.
+> Si tes noms de nœuds diffèrent : construis le workflow dans ComfyUI, fais
+> **Workflow → Export (API)**, et remplace le fichier en gardant les tokens aux bons
+> endroits (texte positif, négatif, `batch_size` du latent, `frame_rate` du
+> VideoCombine). Aucun redémarrage nécessaire (rechargé à chaud).
+
+> **8 Go VRAM :** comme l'image, la vidéo est `exclusive` — les LLM sont déchargés
+> avant. Durée 10-20 s = ~5-15 min de calcul. Si OOM, baisse `VIDEO_FPS` ou la
+> résolution dans le workflow (512→384), ou réduis `context_length`.
+
+> **Aucun filtre de contenu :** les modèles AnimateDiff locaux ne font aucune
+> modération (usage lab). Reste dans le cadre légal (pas de personnes réelles sans
+> consentement, pas de contenu illégal).
+
+---
+
 ## 6. Faster-Whisper (STT)
 
 Le service est inclus dans `docker-compose.kubuntu.yml` (image `onerahmet/openai-whisper-asr-webservice`).  

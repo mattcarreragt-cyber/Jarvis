@@ -65,6 +65,15 @@ capabilities:
     exclusive: true     # nécessite de décharger les autres modèles GPU d'abord
     description: "Génération d'images (occupe quasiment tout le GPU 8 Go)"
 
+  video:
+    machine: kubuntu
+    backend: comfyui
+    model: animatediff-sd15      # AnimateDiff + fenêtres de contexte (8 Go OK)
+    gpu: true
+    vram_gb: 8
+    exclusive: true              # décharge LLM + ne co-charge pas avec l'image
+    description: "Génération de vidéo 10-20 s (512x512, asynchrone, plusieurs min)"
+
 # Politique de sélection chat (utilisée par le Scheduler)
 # L'agent peut surcharger avec hint: fast | deep
 chat_policy:

@@ -13,6 +13,7 @@ from app.agents.nextcloud_agent import NextcloudAgent
 from app.agents.search_agent import SearchAgent
 from app.agents.system_agent import SystemAgent
 from app.agents.unraid_agent import UnraidAgent
+from app.agents.video_agent import VideoAgent
 
 
 def build_registry() -> AgentRegistry:
@@ -26,6 +27,7 @@ def build_registry() -> AgentRegistry:
     registry.register(MarketingAgent())
     registry.register(NextcloudAgent())
     registry.register(ImageAgent())
+    registry.register(VideoAgent())
     registry.register(DevAgent())
     return registry
 
