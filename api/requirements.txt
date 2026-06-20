@@ -6,3 +6,7 @@ redis[asyncio]==5.2.0
 httpx==0.28.0
 qdrant-client==1.12.1
 wakeonlan==3.1.0
+
+# dev / tests
+pytest==8.3.4
+pytest-asyncio==0.24.0
