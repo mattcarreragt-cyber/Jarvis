@@ -26,22 +26,21 @@
 
 ## Wake-on-LAN du nœud de calcul
 
-Kubuntu n'a pas besoin de tourner en permanence. Le chef d'orchestre (Unraid)
-le réveille à la demande :
+Kubuntu n'a pas besoin de tourner en permanence. Le **Resource Orchestrator**
+(voir `08_ORCHESTRATION.md`) gère le réveil avec une règle précise :
 
-1. Une requête arrive nécessitant le GPU (chat LLM, image, voix).
-2. FastAPI vérifie la santé du nœud Kubuntu (`GET {OLLAMA_BASE_URL}/...`).
-3. Si injoignable et **WoL activé** (flag de config `KUBUNTU_WOL_ENABLED`),
-   envoie un magic packet à `KUBUNTU_MAC` puis attend (polling santé) jusqu'à
-   `KUBUNTU_WOL_TIMEOUT`.
-4. Réveil OK → la requête poursuit. Sinon → réponse `503` claire (« nœud de
-   calcul indisponible »).
+**Kubuntu est réveillé si et seulement si la tâche requiert une capacité
+`gpu: true` sur la machine `kubuntu`.** Une demande TTS (Piper sur Unraid,
+CPU-only) ne réveille pas Kubuntu.
 
-- Le WoL est **activable/désactivable** depuis la config (et idéalement
-  l'UI). Désactivé → comportement classique (erreur si Kubuntu est éteint).
-- L'utilisateur voit un état « réveil en cours… » dans la webapp pendant le WoL.
-- Idéalement, mise en veille auto de Kubuntu après une période d'inactivité
-  (géré côté Kubuntu, hors périmètre v1).
+Séquence :
+1. L'Orchestrateur résout les capacités requises pour la tâche.
+2. Si au moins une capacité est `gpu: true` + `machine: kubuntu`, vérifie la santé.
+3. Si injoignable et WoL activé : envoie magic packet → attend le réveil
+   (SSE `waking` affiché dans la webapp).
+4. Réveil OK → tâche poursuit. Sinon → `503` clair.
+
+Config : `KUBUNTU_WOL_ENABLED`, `KUBUNTU_MAC`, `KUBUNTU_WOL_TIMEOUT`.
 
 ## Déploiement
 

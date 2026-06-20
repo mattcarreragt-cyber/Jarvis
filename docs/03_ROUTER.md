@@ -1,4 +1,11 @@
-# 03 — Router (routage hybride)
+# 03 — Router d'agent (routage hybride)
+
+> Ce document couvre uniquement le routage **intent → agent**.
+> Le routage **tâche → machine/modèle** est dans `08_ORCHESTRATION.md`.
+> Ces deux couches sont strictement séparées : le Router ne sait rien des
+> machines ; le Scheduler ne sait rien des intents.
+
+
 
 Le Router décide quel agent traite une requête. Choix retenu : **hybride**,
 construit en deux temps pour rester dégradable.

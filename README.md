@@ -36,6 +36,7 @@ La spec vit dans [`docs/`](docs/). Lire dans l'ordre :
 6. [`05_AGENTS.md`](docs/05_AGENTS.md) — catalogue des agents et périmètres.
 7. [`06_SECURITY.md`](docs/06_SECURITY.md) — auth, permissions, sandboxing.
 8. [`07_BUILD_ORDER.md`](docs/07_BUILD_ORDER.md) — ordre de construction corrigé + critères de « fini ».
+9. [`08_ORCHESTRATION.md`](docs/08_ORCHESTRATION.md) — Capability Registry, Scheduler, sélection de modèle, WoL.
 
 ## État
 
