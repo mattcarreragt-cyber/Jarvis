@@ -23,7 +23,12 @@ class Settings(BaseSettings):
 
     # API
     secret_key: str = "changeme"
+    api_key: str = ""            # vide = auth désactivée (dev). Obligatoire en prod.
     log_level: str = "info"
+
+    # Home Assistant
+    ha_url: str = "http://homeassistant.local:8123"
+    ha_token: str = ""
 
 
 settings = Settings()

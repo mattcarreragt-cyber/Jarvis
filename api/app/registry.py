@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.agents.base import AgentRegistry
 from app.agents.echo import EchoAgent
+from app.agents.ha_agent import HomeAssistantAgent
 from app.agents.system_agent import SystemAgent
 from app.agents.unraid_agent import UnraidAgent
 
@@ -13,7 +14,8 @@ def build_registry() -> AgentRegistry:
     registry.register(EchoAgent())
     registry.register(SystemAgent())
     registry.register(UnraidAgent())
-    # Les autres agents (marketing, recherche, ...) s'enregistreront ici.
+    registry.register(HomeAssistantAgent())
+    # Les autres agents (marketing, recherche, dev, image) s'enregistreront ici.
     return registry
 
 

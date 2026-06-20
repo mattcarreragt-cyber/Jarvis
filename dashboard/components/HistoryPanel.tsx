@@ -1,0 +1,117 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Clock, ChevronLeft, MessageSquare } from 'lucide-react'
+import { fetchSessions, fetchSession, SessionSummary, HistoryMessage } from '@/lib/api'
+
+interface Props {
+  onRestore: (messages: { role: 'user' | 'assistant'; content: string; agent?: string }[]) => void
+  onClose: () => void
+}
+
+export default function HistoryPanel({ onRestore, onClose }: Props) {
+  const [sessions, setSessions]   = useState<SessionSummary[]>([])
+  const [selected, setSelected]   = useState<string | null>(null)
+  const [messages, setMessages]   = useState<HistoryMessage[]>([])
+  const [loading, setLoading]     = useState(false)
+
+  useEffect(() => {
+    fetchSessions().then(setSessions)
+  }, [])
+
+  const open = async (id: string) => {
+    setLoading(true)
+    setSelected(id)
+    const msgs = await fetchSession(id)
+    setMessages(msgs)
+    setLoading(false)
+  }
+
+  const restore = () => {
+    onRestore(messages.map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+      agent: m.agent ?? undefined,
+    })))
+    onClose()
+  }
+
+  return (
+    <motion.div
+      className="absolute inset-0 z-20 flex flex-col panel"
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 40 }}
+      transition={{ duration: 0.2 }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[rgba(0,212,255,0.15)]">
+        <button onClick={onClose} className="text-[var(--text-dim)] hover:text-[var(--cyan)]">
+          <ChevronLeft size={18} />
+        </button>
+        <Clock size={14} className="text-[var(--cyan)]" />
+        <span className="text-xs tracking-widest text-[var(--cyan)] glow-sm">HISTORIQUE</span>
+        <span className="ml-auto text-[10px] text-[var(--text-dim)]">{sessions.length} sessions</span>
+      </div>
+
+      <div className="flex flex-1 min-h-0">
+        {/* Sessions list */}
+        <div className="w-48 shrink-0 border-r border-[rgba(0,212,255,0.1)] overflow-y-auto py-2">
+          {sessions.length === 0 && (
+            <p className="text-[10px] text-[var(--text-dim)] text-center mt-4 tracking-widest">
+              AUCUNE SESSION
+            </p>
+          )}
+          {sessions.map(s => (
+            <button
+              key={s.id}
+              onClick={() => open(s.id)}
+              className={`w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[rgba(0,212,255,0.05)] ${
+                selected === s.id ? 'bg-[rgba(0,212,255,0.08)] text-[var(--cyan)]' : 'text-[var(--text-dim)]'
+              }`}
+            >
+              <div className="flex items-center gap-1 mb-0.5">
+                <MessageSquare size={10} />
+                <span className="font-mono">{s.id.slice(0, 8).toUpperCase()}</span>
+              </div>
+              <div className="text-[9px] opacity-60">
+                {new Date(s.created_at).toLocaleDateString('fr-FR')} · {s.message_count} msgs
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Messages preview */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+          {loading && (
+            <p className="text-[var(--text-dim)] text-xs text-center mt-8 tracking-widest">
+              CHARGEMENT…
+            </p>
+          )}
+          {!loading && messages.map(m => (
+            <div key={m.id} className={`text-xs leading-relaxed ${
+              m.role === 'user' ? 'text-[var(--text)] text-right' : 'text-[var(--cyan)]'
+            }`}>
+              {m.role === 'assistant' && (
+                <span className="text-[9px] text-[var(--text-dim)] block tracking-widest mb-0.5">
+                  [{m.agent?.toUpperCase() ?? 'JARVIS'}]
+                </span>
+              )}
+              <span className="whitespace-pre-wrap line-clamp-3">{m.content}</span>
+            </div>
+          ))}
+          {!loading && messages.length > 0 && (
+            <button
+              onClick={restore}
+              className="w-full mt-4 py-2 text-[10px] tracking-widest text-[var(--cyan)]
+                         border border-[rgba(0,212,255,0.3)] rounded hover:bg-[rgba(0,212,255,0.08)]"
+            >
+              RESTAURER CETTE SESSION
+            </button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
