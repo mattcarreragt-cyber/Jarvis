@@ -12,6 +12,15 @@ class Settings(BaseSettings):
     # Cybersécurité (audit SSH défensif de TES hôtes)
     cyber_ssh_key_path: str = ""   # chemin d'une clé privée SSH montée dans le conteneur
 
+    # Bureau distant / streaming (Moonlight + Sunshine sur Kubuntu)
+    sunshine_host: str = ""        # IP de Kubuntu (défaut : dérivé de KUBUNTU_URL)
+    sunshine_port: int = 47989     # port GameStream/Sunshine pour le test de disponibilité
+
+    # VPN Mullvad
+    mullvad_ssh_host: str = ""     # hôte où tourne le CLI mullvad (optionnel, pour contrôle)
+    mullvad_ssh_user: str = "root"
+    mullvad_ssh_port: int = 22
+
     # Comportement des modèles
     # unrestricted_mode : persona neutre (réponses directes, sans avertissements
     # superflus). Combine-le avec un modèle sans bridage dans capabilities.yaml.

@@ -14,7 +14,9 @@ from app.agents.image_agent import ImageAgent
 from app.agents.marketing_agent import MarketingAgent
 from app.agents.memory_agent import MemoryAgent
 from app.agents.nextcloud_agent import NextcloudAgent
+from app.agents.remote_agent import RemoteAgent
 from app.agents.search_agent import SearchAgent
+from app.agents.vpn_agent import VpnAgent
 from app.agents.system_agent import SystemAgent
 from app.agents.unraid_agent import UnraidAgent
 from app.agents.video_agent import VideoAgent
@@ -36,6 +38,8 @@ def build_registry() -> AgentRegistry:
     registry.register(VideoAgent())
     registry.register(AudioAgent())
     registry.register(CyberAgent())
+    registry.register(RemoteAgent())
+    registry.register(VpnAgent())
     registry.register(DevAgent())
     return registry
 

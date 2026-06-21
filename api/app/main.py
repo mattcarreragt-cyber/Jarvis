@@ -26,6 +26,7 @@ from app.routers import jobs as jobs_router
 from app.routers import media as media_router
 from app.routers import memory as memory_router
 from app.routers import nextcloud as nextcloud_router
+from app.routers import remote as remote_router
 from app.routers import sessions
 from app.routers import stats as stats_router
 from app.routers import system as system_router
@@ -81,6 +82,7 @@ app.include_router(hooks_router.router)
 app.include_router(backup_router.router)
 app.include_router(stats_router.router)
 app.include_router(cyber_router.router)
+app.include_router(remote_router.router)
 
 
 @app.get("/api/health", tags=["system"])

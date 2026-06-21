@@ -183,7 +183,31 @@ Bouton ⚙ → section Sauvegarde :
 
 ---
 
-## 17. Historique & export de conversation
+## 17. Bureau distant & streaming (Moonlight/Sunshine)
+
+| Action | Exemple |
+|--------|---------|
+| Réveiller Kubuntu + préparer le stream | « **réveille kubuntu** », « **lance le streaming** » |
+| Vérifier Sunshine | « **statut sunshine** » |
+| Panneau | bouton 🖥️ (réveil + statut) |
+
+🟢 (WoL + test Sunshine) → connexion ensuite via **Moonlight**. Voir `BUREAU_DISTANT_VPN.md`.
+
+---
+
+## 18. VPN Mullvad
+
+| Action | Exemple |
+|--------|---------|
+| Suis-je protégé ? | « **suis-je protégé** », « **statut vpn** » |
+| Connecter / déconnecter | « **connecte le vpn** », « **déconnecte le vpn** » |
+| Changer de pays | « **vpn pays se** » (code ISO) |
+
+🟢 Statut HTTP (sortie JARVIS) ou CLI via SSH (`MULLVAD_SSH_HOST`).
+
+---
+
+## 19. Historique & export de conversation
 
 Bouton 🕑 : retrouve tes sessions, **restaure** une conversation, ou **exporte**-la
 en **Markdown** / **JSON** pour l'archiver. 🟢

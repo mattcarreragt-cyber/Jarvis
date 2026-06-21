@@ -7,6 +7,8 @@
 - **COMPOSANTS_EXPLIQUES.md** — à quoi sert chaque logiciel installé
 - **DEPANNAGE_COMPLET.md** — tous les problèmes possibles et leurs solutions
 - **MODELES_SANS_RESTRICTION.md** — utiliser des modèles sans bridage (lab local)
+- **CYBERSECURITE.md** — module d'audit défensif (SSH, nmap, lynis, CVE, scoring)
+- **BUREAU_DISTANT_VPN.md** — Moonlight/Sunshine + WoL, VPN Mullvad, note Tuta Mail
 
 ## 🚀 Guides d'installation détaillés (par machine)
 - **UNRAID_SETUP.md** — le cœur (interface + base de données + mémoire)

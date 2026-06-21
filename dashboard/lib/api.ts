@@ -123,6 +123,31 @@ export function hookUrl(token: string): string {
   return `${API}/api/hooks/${token}`
 }
 
+export async function remoteWake(): Promise<{ sunshine_up: boolean; host: string; woke?: boolean }> {
+  const r = await apiFetch('/api/remote/wake', { method: 'POST' })
+  if (!r.ok) return { sunshine_up: false, host: '?' }
+  return r.json()
+}
+
+export async function remoteStatus(): Promise<{ sunshine_up: boolean; host: string }> {
+  const r = await apiFetch('/api/remote/status')
+  if (!r.ok) return { sunshine_up: false, host: '?' }
+  return r.json()
+}
+
+export async function vpnStatus(): Promise<{ ssh_status: string | null; http_status: Record<string, unknown> | null }> {
+  const r = await apiFetch('/api/vpn/status')
+  if (!r.ok) return { ssh_status: null, http_status: null }
+  return r.json()
+}
+
+export async function vpnControl(action: string, location?: string): Promise<{ ok: boolean; error?: string }> {
+  const r = await apiFetch('/api/vpn/control', {
+    method: 'POST', body: JSON.stringify({ action, location }),
+  })
+  return r.json().catch(() => ({ ok: false }))
+}
+
 export interface CyberHost {
   id: string
   label: string
