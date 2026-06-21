@@ -63,14 +63,25 @@ L'audit est **100 % lecture**. Checks inclus :
 | suid | binaires SUID risqués |
 | **nmap** | scan réseau (depuis l'API) : ports/services exposés, services sensibles (Telnet, RDP, Redis, Docker API…) |
 | **lynis** | audit système approfondi sur l'hôte : indice de durcissement + avertissements |
+| **rootkit** | rkhunter / chkrootkit : indicateurs d'infection et avertissements |
+| **cve** | corrélation CVE des paquets installés via OSV.dev (Debian/Ubuntu) |
 
 Chaque finding a une **sévérité** (🟥 critical → ⬜ info), une **recommandation**
 et, si possible, une **commande de correctif**.
 
-### Score de sécurité
+### Score de sécurité + historique
 Chaque audit calcule un **score 0-100** et un **grade A-F** (pénalités pondérées
 par sévérité : critical −30, high −15, medium −6, low −2). Affiché dans le chat
-et en badge sur l'hôte dans le panneau.
+et en badge sur l'hôte. Chaque score est **historisé** : le panneau affiche une
+**courbe d'évolution** (sparkline) pour suivre le durcissement dans le temps.
+API : `GET /api/cyber/hosts/<id>/scores`.
+
+### Rootkits & CVE — pré-requis hôte
+- **rkhunter** ou **chkrootkit** : `sudo apt-get install rkhunter` sur l'hôte
+  (sinon un finding le recommande). Détection d'indicateurs d'infection.
+- **CVE (OSV.dev)** : nécessite un **accès réseau sortant** depuis le conteneur
+  API vers `api.osv.dev`. Relève les paquets `dpkg` (Debian/Ubuntu) et signale
+  les CVE connues. Sans réseau → check ignoré silencieusement.
 
 ### Pré-requis nmap / lynis
 - **nmap** : installé automatiquement dans le conteneur API (voir `api/Dockerfile`).

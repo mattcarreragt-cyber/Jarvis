@@ -143,6 +143,75 @@ async def test_audit_includes_score():
     assert 0 <= res["score"] <= 100
 
 
+# ─── Rootkits ────────────────────────────────────────────────────────────────
+
+async def test_rootkit_no_scanner():
+    run = _runner({"command -v rkhunter": "__NORK__"})
+    f = await audit._check_rootkits(run)
+    assert f and f[0].severity == "info"
+
+
+async def test_rootkit_infected_critical():
+    run = _runner({"command -v rkhunter": "/bin/ls INFECTED\nWarning: suspicious file"})
+    f = await audit._check_rootkits(run)
+    sev = [x.severity for x in f]
+    assert "critical" in sev
+    assert "medium" in sev   # le warning
+
+
+# ─── CVE (OSV) ───────────────────────────────────────────────────────────────
+
+def test_cve_ecosystem_detection():
+    from app.cyber import cve
+    deb = 'ID=debian\nVERSION_ID="12"\n'
+    assert cve._ecosystem(deb) == "Debian:12"
+    ubu = 'ID=ubuntu\nVERSION_ID="22.04"\n'
+    assert cve._ecosystem(ubu) == "Ubuntu:22.04"
+    assert cve._ecosystem("ID=arch\n") is None
+
+
+async def test_cve_scan_finds_vulns():
+    from app.cyber import cve
+
+    async def run(cmd, timeout=120):
+        if "os-release" in cmd:
+            return 'ID=debian\nVERSION_ID="12"\n'
+        if "dpkg-query" in cmd:
+            return "openssl 3.0.1\ncurl 7.88.0\n"
+        return ""
+
+    class _Resp:
+        def raise_for_status(self): pass
+        def json(self): return {"results": [{"vulns": [{"id": "CVE-2024-1"}]}, {}]}
+
+    class _Client:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, *a, **k): return _Resp()
+
+    with patch("app.cyber.cve.httpx.AsyncClient", _Client):
+        f = await cve.scan_packages(run)
+    assert f and f[0]["check"] == "cve"
+    assert "CVE potentielles" in f[0]["title"]
+
+
+async def test_cve_no_packages():
+    from app.cyber import cve
+    async def run(cmd, timeout=120):
+        return ""   # pas d'os-release -> écosystème None
+    assert await cve.scan_packages(run) == []
+
+
+# ─── Historique des scores ───────────────────────────────────────────────────
+
+async def test_score_history_no_pool():
+    from app.cyber import store
+    with patch("app.cyber.store.get_pool", new=AsyncMock(return_value=None)):
+        assert await store.score_history("h1") == []
+        await store.save_score("h1", 80, "B")   # no-op, ne lève pas
+
+
 def test_router_cyber_keywords():
     from app.registry import registry
     from app.router import route

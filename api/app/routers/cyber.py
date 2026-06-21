@@ -44,12 +44,19 @@ async def run_audit(host_id: str):
     result = await audit.run_audit(host)
     if result.get("ok"):
         await store.save_findings(host["id"], result["findings"])
+        if result.get("score") is not None:
+            await store.save_score(host["id"], result["score"], result.get("grade", "?"))
     return result
 
 
 @router.get("/hosts/{host_id}/findings", dependencies=[Depends(require_api_key)])
 async def findings(host_id: str):
     return {"findings": await store.latest_findings(host_id)}
+
+
+@router.get("/hosts/{host_id}/scores", dependencies=[Depends(require_api_key)])
+async def scores(host_id: str):
+    return {"history": await store.score_history(host_id)}
 
 
 class RemediateIn(BaseModel):

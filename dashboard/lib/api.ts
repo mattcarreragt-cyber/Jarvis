@@ -164,6 +164,12 @@ export async function runCyberAudit(id: string): Promise<{ ok: boolean; findings
   return r.json()
 }
 
+export async function fetchCyberScores(id: string): Promise<{ score: number; grade: string; created_at: string }[]> {
+  const r = await apiFetch(`/api/cyber/hosts/${id}/scores`)
+  if (!r.ok) return []
+  return (await r.json()).history
+}
+
 export async function remediateCyber(id: string, command: string): Promise<{ ok: boolean; output?: string; error?: string }> {
   const r = await apiFetch(`/api/cyber/hosts/${id}/remediate`, {
     method: 'POST', body: JSON.stringify({ command }),

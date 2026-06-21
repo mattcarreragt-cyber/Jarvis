@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { ShieldCheck, X, Trash2, Plus, ScanLine, Loader2, Play } from 'lucide-react'
 import {
   fetchCyberHosts, addCyberHost, deleteCyberHost, runCyberAudit, remediateCyber,
-  CyberHost, CyberFinding,
+  fetchCyberScores, CyberHost, CyberFinding,
 } from '@/lib/api'
 
 interface Props { onClose: () => void }
@@ -14,11 +14,35 @@ const SEV_COLOR: Record<string, string> = {
   critical: '#ff3b3b', high: '#ff7a3b', medium: '#ffcc00', low: '#3ba9ff', info: '#4a7a96',
 }
 
+function Sparkline({ values }: { values: number[] }) {
+  const w = 60, h = 16
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w
+    const y = h - (v / 100) * h
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+  const last = values[values.length - 1]
+  const col = last >= 75 ? '#00ffcc' : last >= 50 ? '#ffcc00' : '#ff3b3b'
+  return (
+    <svg width={w} height={h} className="opacity-80">
+      <title>Évolution du score</title>
+      <polyline points={pts} fill="none" stroke={col} strokeWidth="1.5" />
+    </svg>
+  )
+}
+
 export default function CyberPanel({ onClose }: Props) {
   const [hosts, setHosts] = useState<CyberHost[]>([])
   const [findings, setFindings] = useState<Record<string, CyberFinding[]>>({})
   const [scores, setScores] = useState<Record<string, { score: number; grade: string }>>({})
+  const [history, setHistory] = useState<Record<string, number[]>>({})
   const [auditing, setAuditing] = useState<string>('')
+
+  const loadHistory = useCallback(async (id: string) => {
+    const h = await fetchCyberScores(id)
+    setHistory(s => ({ ...s, [id]: h.map(x => x.score) }))
+  }, [])
+  useEffect(() => { hosts.forEach(h => loadHistory(h.id)) }, [hosts, loadHistory])
   const [form, setForm] = useState({ label: '', hostname: '', username: 'root', port: 22 })
 
   const load = useCallback(async () => setHosts(await fetchCyberHosts()), [])
@@ -36,8 +60,10 @@ export default function CyberPanel({ onClose }: Props) {
     setAuditing('')
     if (res.ok && res.findings) {
       setFindings(f => ({ ...f, [id]: res.findings! }))
-      if (res.score !== undefined && res.grade)
+      if (res.score !== undefined && res.grade) {
         setScores(s => ({ ...s, [id]: { score: res.score!, grade: res.grade! } }))
+        loadHistory(id)
+      }
     } else alert(res.error || 'Audit impossible (SSH ?)')
   }
   const apply = async (id: string, cmd: string) => {
@@ -101,6 +127,7 @@ export default function CyberPanel({ onClose }: Props) {
                     {scores[h.id].score}/100 · {scores[h.id].grade}
                   </span>
                 )}
+                {history[h.id] && history[h.id].length > 1 && <Sparkline values={history[h.id]} />}
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => audit(h.id)} disabled={auditing === h.id}

@@ -11,7 +11,7 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 
-from app.cyber import nmap_scan, ssh
+from app.cyber import cve, nmap_scan, ssh
 
 logger = logging.getLogger("jarvis.cyber.audit")
 
@@ -172,10 +172,43 @@ async def _check_lynis(run) -> list[Finding]:
     return f
 
 
+async def _check_rootkits(run) -> list[Finding]:
+    """Détection de rootkits via rkhunter, sinon chkrootkit."""
+    out = await run(
+        "if command -v rkhunter >/dev/null 2>&1; then "
+        "  sudo rkhunter --check --sk --nocolors 2>/dev/null | grep -iE 'warning|infected'; "
+        "elif command -v chkrootkit >/dev/null 2>&1; then "
+        "  sudo chkrootkit 2>/dev/null | grep -iE 'INFECTED'; "
+        "else echo __NORK__; fi", timeout=600)
+    if "__NORK__" in out or not out.strip():
+        if "__NORK__" in out:
+            return [Finding("rootkit", "info", "Aucun scanner de rootkit installé",
+                            "", "Installer rkhunter ou chkrootkit pour détecter les rootkits.",
+                            "sudo apt-get install -y rkhunter")]
+        return []  # scanner présent, rien remonté
+    infected = [l.strip() for l in out.splitlines() if re.search(r"infected", l, re.I)]
+    warns = [l.strip() for l in out.splitlines() if re.search(r"warning", l, re.I)]
+    f = []
+    if infected:
+        f.append(Finding("rootkit", "critical", f"{len(infected)} indicateur(s) d'infection détecté(s)",
+                         "\n".join(infected[:10]),
+                         "Investiguer immédiatement : possible compromission."))
+    if warns:
+        f.append(Finding("rootkit", "medium", f"{len(warns)} avertissement(s) rkhunter",
+                         "\n".join(warns[:10]), "Vérifier chaque avertissement rkhunter."))
+    return f
+
+
+async def _check_cve(run) -> list[Finding]:
+    """Corrélation CVE des paquets installés (OSV.dev)."""
+    dicts = await cve.scan_packages(run)
+    return [Finding(**d) for d in dicts]
+
+
 _CHECKS = [
     _check_root_users, _check_empty_passwords, _check_sshd, _check_firewall,
     _check_updates, _check_ports, _check_docker, _check_failed_logins,
-    _check_lynis, _check_suid,
+    _check_rootkits, _check_lynis, _check_cve, _check_suid,
 ]
 
 

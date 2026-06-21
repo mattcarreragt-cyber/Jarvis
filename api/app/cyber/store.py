@@ -86,6 +86,35 @@ async def save_findings(host_id: str, findings: list[dict]) -> None:
         logger.warning("save_findings: %s", e)
 
 
+async def save_score(host_id: str, score: int, grade: str) -> None:
+    pool = await get_pool()
+    if pool is None:
+        return
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO cyber_scores(id,host_id,score,grade) VALUES($1,$2,$3,$4)",
+                str(uuid.uuid4()), host_id, score, grade)
+    except Exception as e:
+        logger.warning("save_score: %s", e)
+
+
+async def score_history(host_id: str, limit: int = 30) -> list[dict]:
+    pool = await get_pool()
+    if pool is None:
+        return []
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT score,grade,created_at FROM cyber_scores WHERE host_id=$1 "
+                "ORDER BY created_at DESC LIMIT $2", host_id, limit)
+        return [{"score": r["score"], "grade": r["grade"],
+                 "created_at": r["created_at"].isoformat()} for r in reversed(rows)]
+    except Exception as e:
+        logger.warning("score_history: %s", e)
+        return []
+
+
 async def latest_findings(host_id: str) -> list[dict]:
     pool = await get_pool()
     if pool is None:

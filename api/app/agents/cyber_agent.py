@@ -70,6 +70,8 @@ class CyberAgent(Agent):
 
         findings = result["findings"]
         await store.save_findings(target["id"], findings)
+        if result.get("score") is not None:
+            await store.save_score(target["id"], result["score"], result.get("grade", "?"))
         return self._r(req, self._format(target, findings, result["summary"],
                                          result.get("score"), result.get("grade")), call)
 
