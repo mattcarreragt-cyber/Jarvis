@@ -275,6 +275,22 @@ Organisé par **symptôme**. Pour chaque cas : cause probable → solution.
 
 ---
 
+## 11bis. Sauvegarde & migration
+
+### 💾 Comment sauvegarder le « cerveau » de JARVIS ?
+Panneau **⚙ Système** → section **SAUVEGARDE** → **EXPORTER** : télécharge un
+JSON contenant tes **faits mémorisés**, **tâches/rappels** et **webhooks**.
+Garde ce fichier en lieu sûr (ou dans le plan de backup Unraid).
+
+### ♻️ Restaurer / migrer vers une autre machine
+Même panneau → **RESTAURER** → choisis ton fichier JSON. Mode `merge` (défaut) :
+ajoute sans écraser. (API : `POST /api/backup/restore?mode=replace` pour remplacer.)
+
+> Ne sont **pas** inclus : les conversations (exportables par session via
+> l'historique) ni les médias (fichiers physiques sur le GPU).
+
+---
+
 ## 12. Tout réinitialiser (dernier recours)
 
 ```bash

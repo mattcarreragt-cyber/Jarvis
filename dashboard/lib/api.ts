@@ -135,6 +135,31 @@ export async function fetchSystem(): Promise<SystemInfo | null> {
   return r.json()
 }
 
+/** Télécharge une sauvegarde JSON du « cerveau » de JARVIS. */
+export async function downloadBackup(): Promise<boolean> {
+  const r = await apiFetch('/api/backup')
+  if (!r.ok) return false
+  const blob = await r.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `jarvis_backup_${new Date().toISOString().slice(0, 10)}.json`
+  document.body.appendChild(a); a.click(); a.remove()
+  URL.revokeObjectURL(url)
+  return true
+}
+
+/** Restaure depuis un fichier de sauvegarde. */
+export async function restoreBackup(file: File, mode: 'merge' | 'replace'): Promise<{ ok: boolean; imported?: Record<string, unknown>; error?: string }> {
+  const form = new FormData()
+  form.append('file', file)
+  const headers: HeadersInit = KEY ? { 'X-API-Key': KEY } : {}
+  const r = await fetch(`${API}/api/backup/restore?mode=${mode}`, { method: 'POST', headers, body: form })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) return { ok: false, error: data.detail || `HTTP ${r.status}` }
+  return data
+}
+
 export interface MediaAsset {
   id: string
   kind: 'image' | 'video' | 'audio'
