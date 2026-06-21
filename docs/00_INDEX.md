@@ -2,6 +2,7 @@
 
 ## 🌟 Commence ici
 - **GUIDE_DEBUTANT.md** — pas à pas pour quelqu'un qui n'y connaît rien (zéro jargon)
+- **FONCTIONNALITES.md** — catalogue complet de tout ce que JARVIS sait faire (avec exemples)
 - **DEPLOIEMENT.md** — guide maître du déploiement (les 4 phases enchaînées)
 - **COMPOSANTS_EXPLIQUES.md** — à quoi sert chaque logiciel installé
 - **DEPANNAGE_COMPLET.md** — tous les problèmes possibles et leurs solutions

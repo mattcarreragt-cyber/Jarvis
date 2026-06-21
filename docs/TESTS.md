@@ -10,12 +10,14 @@ au déploiement, dans l'ordre.
 ```bash
 cd api
 python -m pytest -q
-# Attendu : 115 passed
+# Attendu : 175 passed
 ```
 
-Couverture : router, 12 agents, mémoire (court/long/faits), RAG (extraction,
-recherche, sync Nextcloud), LLM (embeddings/chat/synthèse), orchestration
-(WoL + budget VRAM 8 Go + RunPod), images, vidéo, voix, jobs.
+Couverture : router (règles + LLM), 14 agents, mémoire (court/long/faits), RAG
+(extraction, recherche, sync Nextcloud), LLM (embeddings/chat/synthèse),
+orchestration (WoL + budget VRAM 8 Go + RunPod), images, vidéo (texte→vidéo &
+image→vidéo), audio, voix, jobs, agenda, webhooks, galerie, export, sauvegarde,
+stats, système.
 
 Typecheck dashboard :
 ```bash

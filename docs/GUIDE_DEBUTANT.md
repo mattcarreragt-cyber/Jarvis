@@ -145,10 +145,15 @@ En résumé, sur le PC graphique tu vas :
 | 🎬 | Jobs | suivre les vidéos en cours de génération |
 | 🎬 | Animer | transformer une image en petite vidéo |
 | ⊞ | Galerie | revoir toutes les images/vidéos/sons créés |
-| ⚙ | Système | voir si tes machines sont allumées |
+| ⚙ | Système | voir l'état des machines + sauvegarder/restaurer |
+| 🔗 | Webhooks | créer des déclencheurs externes (ex. Home Assistant) |
+| 📊 | Stats | voir comment tu utilises JARVIS |
 | 🧠 | Mémoire | voir/effacer ce que JARVIS a retenu |
-| 🕑 | Historique | retrouver tes anciennes conversations |
+| 🕑 | Historique | retrouver/exporter tes anciennes conversations |
 | 🎙️ (en bas) | Micro | parler à JARVIS au lieu de taper |
+
+> 📖 Pour la liste **complète** de tout ce que JARVIS sait faire avec des
+> exemples de phrases, voir **`FONCTIONNALITES.md`**.
 
 ---
 
