@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid, SlidersHorizontal } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -15,6 +15,7 @@ import MemoryPanel from '@/components/MemoryPanel'
 import AnimatePanel from '@/components/AnimatePanel'
 import AgendaPanel from '@/components/AgendaPanel'
 import GalleryPanel from '@/components/GalleryPanel'
+import SystemPanel from '@/components/SystemPanel'
 import { apiFetch, transcribeAudio, speak, fetchNotifications } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 
@@ -37,13 +38,14 @@ export default function Home() {
   const [showAnimate, setShowAnimate] = useState(false)
   const [showAgenda, setShowAgenda]   = useState(false)
   const [showGallery, setShowGallery] = useState(false)
+  const [showSystem, setShowSystem]   = useState(false)
   const [unread, setUnread]           = useState(0)
   const [voiceOut, setVoiceOut]       = useState(false)
 
   const closePanels = useCallback(() => {
     setShowUpload(false); setShowCloud(false); setShowHistory(false)
     setShowJobs(false); setShowMemory(false); setShowAnimate(false)
-    setShowAgenda(false); setShowGallery(false)
+    setShowAgenda(false); setShowGallery(false); setShowSystem(false)
   }, [])
 
   useEffect(() => {
@@ -279,6 +281,18 @@ export default function Home() {
             >
               <LayoutGrid size={16} />
             </button>
+            {/* Système */}
+            <button
+              onClick={() => { const n = !showSystem; closePanels(); setShowSystem(n) }}
+              title="Système & paliers"
+              className={`p-1.5 rounded transition-colors ${
+                showSystem
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <SlidersHorizontal size={16} />
+            </button>
             {/* Memory */}
             <button
               onClick={() => { const n = !showMemory; closePanels(); setShowMemory(n) }}
@@ -348,6 +362,9 @@ export default function Home() {
             )}
             {showGallery && (
               <GalleryPanel onClose={() => setShowGallery(false)} />
+            )}
+            {showSystem && (
+              <SystemPanel onClose={() => setShowSystem(false)} />
             )}
           </AnimatePresence>
         </div>

@@ -58,6 +58,19 @@ def get_capability(name: str) -> dict[str, Any] | None:
     return data.get("capabilities", {}).get(name)
 
 
+def list_capabilities() -> list[dict[str, Any]]:
+    """Liste à plat des capacités (pour le panneau Système)."""
+    data = _load()
+    out = []
+    for name, c in data.get("capabilities", {}).items():
+        out.append({
+            "name": name, "machine": c.get("machine"), "backend": c.get("backend"),
+            "model": c.get("model"), "vram_gb": c.get("vram_gb"),
+            "description": c.get("description"),
+        })
+    return out
+
+
 def resolve_chat_hint(message: str) -> str:
     """Retourne 'xl' (RunPod), 'deep' ou 'fast' selon les mots-clés du message."""
     from app.config import settings

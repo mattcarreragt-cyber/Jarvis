@@ -74,6 +74,18 @@ export async function triggerReembed(): Promise<{ ok: boolean; updated?: number;
   return r.json()
 }
 
+export interface SystemInfo {
+  paliers: { name: string; role: string; status: string }[]
+  capabilities: { name: string; machine: string; model: string; vram_gb: number | null; description: string }[]
+  agents: { name: string; description: string }[]
+}
+
+export async function fetchSystem(): Promise<SystemInfo | null> {
+  const r = await apiFetch('/api/system')
+  if (!r.ok) return null
+  return r.json()
+}
+
 export interface MediaAsset {
   id: string
   kind: 'image' | 'video' | 'audio'

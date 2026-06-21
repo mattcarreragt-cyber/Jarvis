@@ -24,6 +24,7 @@ from app.routers import media as media_router
 from app.routers import memory as memory_router
 from app.routers import nextcloud as nextcloud_router
 from app.routers import sessions
+from app.routers import system as system_router
 from app.routers import video as video_router
 from app.routers import voice as voice_router
 from app.sources import nextcloud as nc_source
@@ -71,6 +72,7 @@ app.include_router(memory_router.router)
 app.include_router(agenda_router.router)
 app.include_router(media_router.router)
 app.include_router(audio_router.router)
+app.include_router(system_router.router)
 
 
 @app.get("/api/health", tags=["system"])
