@@ -10,14 +10,15 @@ au déploiement, dans l'ordre.
 ```bash
 cd api
 python -m pytest -q
-# Attendu : 175 passed
+# Attendu : 204 passed
 ```
 
-Couverture : router (règles + LLM), 14 agents, mémoire (court/long/faits), RAG
-(extraction, recherche, sync Nextcloud), LLM (embeddings/chat/synthèse),
-orchestration (WoL + budget VRAM 8 Go + RunPod), images, vidéo (texte→vidéo &
-image→vidéo), audio, voix, jobs, agenda, webhooks, galerie, export, sauvegarde,
-stats, système.
+Couverture : router (règles + LLM), **15 agents**, mémoire (court/long/faits), RAG
+(extraction, recherche, sync Nextcloud), LLM (embeddings/chat/synthèse + persona
+sans restriction), orchestration (WoL + budget VRAM 8 Go + RunPod), images,
+vidéo (texte→vidéo & image→vidéo), audio, voix, jobs, agenda (rappels/automations/
+audits planifiés + hebdo), webhooks, galerie, export, sauvegarde, stats, système,
+**cybersécurité** (audit SSH, nmap, lynis, rootkits, CVE/OSV, scoring + historique).
 
 Typecheck dashboard :
 ```bash
@@ -34,7 +35,7 @@ Pré-requis : `docker compose up -d --build` OK, `docker compose ps` tout "Up".
 
 ```bash
 curl http://localhost:8000/api/health    # PG/REDIS/QDRANT = ok
-curl http://localhost:8000/api/agents     # 12 agents listés
+curl http://localhost:8000/api/agents     # 15 agents listés
 ```
 
 Dans le dashboard (`http://IP_UNRAID:3000`), tape dans l'ordre :
