@@ -214,6 +214,31 @@ Organisé par **symptôme**. Pour chaque cas : cause probable → solution.
 
 ---
 
+## 8bis. Webhooks (déclencheurs externes)
+
+### ❓ Comment déclencher JARVIS depuis Home Assistant ?
+1. Dans le dashboard, ouvre le panneau **Webhooks** (icône 🔗), crée un déclencheur
+   (ex. nom `brief-matin`, message `résume mes nouveaux fichiers nextcloud`).
+2. Copie l'URL fournie (`POST http://IP_UNRAID:8000/api/hooks/<token>`).
+3. Dans HA, ajoute une **RESTful Command** :
+   ```yaml
+   rest_command:
+     jarvis_brief:
+       url: "http://IP_UNRAID:8000/api/hooks/LE_TOKEN"
+       method: POST
+   ```
+   Puis appelle `rest_command.jarvis_brief` depuis une automatisation HA.
+
+### ❌ Le webhook renvoie 404
+- **Cause :** token incorrect ou webhook supprimé/désactivé.
+- **Solution :** recopie l'URL exacte depuis le panneau Webhooks.
+
+### ❌ Le webhook répond mais rien ne se passe
+- **Normal :** l'exécution est **asynchrone**. Le résultat arrive dans les
+  **notifications** (cloche 🔔), source `webhook:<nom>`.
+
+---
+
 ## 9. Nextcloud
 
 ### ❌ `/ping` renvoie `reachable: false`

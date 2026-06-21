@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid, SlidersHorizontal } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid, SlidersHorizontal, Webhook } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -16,6 +16,7 @@ import AnimatePanel from '@/components/AnimatePanel'
 import AgendaPanel from '@/components/AgendaPanel'
 import GalleryPanel from '@/components/GalleryPanel'
 import SystemPanel from '@/components/SystemPanel'
+import HooksPanel from '@/components/HooksPanel'
 import { apiFetch, transcribeAudio, speak, fetchNotifications } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 
@@ -39,13 +40,14 @@ export default function Home() {
   const [showAgenda, setShowAgenda]   = useState(false)
   const [showGallery, setShowGallery] = useState(false)
   const [showSystem, setShowSystem]   = useState(false)
+  const [showHooks, setShowHooks]     = useState(false)
   const [unread, setUnread]           = useState(0)
   const [voiceOut, setVoiceOut]       = useState(false)
 
   const closePanels = useCallback(() => {
     setShowUpload(false); setShowCloud(false); setShowHistory(false)
     setShowJobs(false); setShowMemory(false); setShowAnimate(false)
-    setShowAgenda(false); setShowGallery(false); setShowSystem(false)
+    setShowAgenda(false); setShowGallery(false); setShowSystem(false); setShowHooks(false)
   }, [])
 
   useEffect(() => {
@@ -293,6 +295,18 @@ export default function Home() {
             >
               <SlidersHorizontal size={16} />
             </button>
+            {/* Webhooks */}
+            <button
+              onClick={() => { const n = !showHooks; closePanels(); setShowHooks(n) }}
+              title="Webhooks (déclencheurs externes)"
+              className={`p-1.5 rounded transition-colors ${
+                showHooks
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <Webhook size={16} />
+            </button>
             {/* Memory */}
             <button
               onClick={() => { const n = !showMemory; closePanels(); setShowMemory(n) }}
@@ -365,6 +379,9 @@ export default function Home() {
             )}
             {showSystem && (
               <SystemPanel onClose={() => setShowSystem(false)} />
+            )}
+            {showHooks && (
+              <HooksPanel onClose={() => setShowHooks(false)} />
             )}
           </AnimatePresence>
         </div>

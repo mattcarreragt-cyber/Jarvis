@@ -74,6 +74,39 @@ export async function triggerReembed(): Promise<{ ok: boolean; updated?: number;
   return r.json()
 }
 
+export interface Webhook {
+  id: string
+  token: string
+  label: string
+  message: string
+  enabled: boolean
+  run_count: number
+  last_triggered: string | null
+}
+
+export async function fetchHooks(): Promise<Webhook[]> {
+  const r = await apiFetch('/api/hooks')
+  if (!r.ok) return []
+  return (await r.json()).hooks
+}
+
+export async function createHook(label: string, message: string): Promise<Webhook | null> {
+  const r = await apiFetch('/api/hooks', {
+    method: 'POST', body: JSON.stringify({ label, message }),
+  })
+  if (!r.ok) return null
+  return r.json()
+}
+
+export async function deleteHook(id: string): Promise<boolean> {
+  const r = await apiFetch(`/api/hooks/${id}`, { method: 'DELETE' })
+  return r.ok
+}
+
+export function hookUrl(token: string): string {
+  return `${API}/api/hooks/${token}`
+}
+
 export interface SystemInfo {
   paliers: { name: string; role: string; status: string }[]
   capabilities: { name: string; machine: string; model: string; vram_gb: number | null; description: string }[]
