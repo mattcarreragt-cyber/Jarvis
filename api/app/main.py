@@ -15,6 +15,7 @@ from app.memory import memory
 import app.pending as pending_store
 from app.registry import registry
 from app.router import route
+from app.routers import agenda as agenda_router
 from app.routers import docs as docs_router
 from app.routers import images as images_router
 from app.routers import jobs as jobs_router
@@ -32,17 +33,20 @@ logger = logging.getLogger("jarvis")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    task: asyncio.Task | None = None
+    tasks: list[asyncio.Task] = []
     if settings.nextcloud_sync_enabled and nc_source._configured():
-        task = asyncio.create_task(nc_sync.periodic_loop())
+        tasks.append(asyncio.create_task(nc_sync.periodic_loop()))
         logger.info("Boucle de sync Nextcloud démarrée")
     else:
         logger.info("Sync Nextcloud désactivée ou non configurée")
+    # Boucle d'agenda (rappels / automatisations)
+    from app.automation import runner as agenda_runner
+    tasks.append(asyncio.create_task(agenda_runner.loop()))
     try:
         yield
     finally:
-        if task:
-            task.cancel()
+        for t in tasks:
+            t.cancel()
 
 
 app = FastAPI(title="JARVIS OS", version="0.1.0", lifespan=lifespan)
@@ -62,6 +66,7 @@ app.include_router(video_router.router)
 app.include_router(voice_router.router)
 app.include_router(jobs_router.router)
 app.include_router(memory_router.router)
+app.include_router(agenda_router.router)
 
 
 @app.get("/api/health", tags=["system"])

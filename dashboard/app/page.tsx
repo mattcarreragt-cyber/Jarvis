@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -13,7 +13,8 @@ import NextcloudPanel from '@/components/NextcloudPanel'
 import JobsPanel from '@/components/JobsPanel'
 import MemoryPanel from '@/components/MemoryPanel'
 import AnimatePanel from '@/components/AnimatePanel'
-import { apiFetch, transcribeAudio, speak } from '@/lib/api'
+import AgendaPanel from '@/components/AgendaPanel'
+import { apiFetch, transcribeAudio, speak, fetchNotifications } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 
 let msgCounter = 0
@@ -33,11 +34,20 @@ export default function Home() {
   const [showJobs, setShowJobs]       = useState(false)
   const [showMemory, setShowMemory]   = useState(false)
   const [showAnimate, setShowAnimate] = useState(false)
+  const [showAgenda, setShowAgenda]   = useState(false)
+  const [unread, setUnread]           = useState(0)
   const [voiceOut, setVoiceOut]       = useState(false)
 
   const closePanels = useCallback(() => {
     setShowUpload(false); setShowCloud(false); setShowHistory(false)
-    setShowJobs(false); setShowMemory(false); setShowAnimate(false)
+    setShowJobs(false); setShowMemory(false); setShowAnimate(false); setShowAgenda(false)
+  }, [])
+
+  useEffect(() => {
+    const poll = () => fetchNotifications().then(n => setUnread(n.unread)).catch(() => {})
+    poll()
+    const id = setInterval(poll, 15000)
+    return () => clearInterval(id)
   }, [])
 
   const recorder = useVoiceRecorder()
@@ -176,6 +186,24 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Notifications / agenda */}
+            <button
+              onClick={() => { const n = !showAgenda; closePanels(); setShowAgenda(n); if (n) setUnread(0) }}
+              title="Agenda & notifications"
+              className={`relative p-1.5 rounded transition-colors ${
+                showAgenda
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <Bell size={16} />
+              {unread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 rounded-full
+                                 bg-[var(--cyan)] text-[#02131a] text-[9px] font-bold flex items-center justify-center">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </button>
             {/* Voix sortie (TTS auto) */}
             <button
               onClick={() => setVoiceOut(v => !v)}
@@ -299,6 +327,9 @@ export default function Home() {
                 onClose={() => setShowAnimate(false)}
                 onLaunched={() => { setShowAnimate(false); setShowJobs(true) }}
               />
+            )}
+            {showAgenda && (
+              <AgendaPanel onClose={() => setShowAgenda(false)} />
             )}
           </AnimatePresence>
         </div>

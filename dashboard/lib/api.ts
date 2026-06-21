@@ -74,6 +74,48 @@ export async function triggerReembed(): Promise<{ ok: boolean; updated?: number;
   return r.json()
 }
 
+export interface Notification {
+  id: string
+  text: string
+  source: string | null
+  read: boolean
+  created_at: string
+}
+
+export interface AgendaTask {
+  id: string
+  label: string
+  kind: string
+  payload: string
+  schedule_kind: string
+  time_of_day: string | null
+  interval_sec: number | null
+  next_run: string
+  enabled: boolean
+  last_run: string | null
+}
+
+export async function fetchNotifications(): Promise<{ notifications: Notification[]; unread: number }> {
+  const r = await apiFetch('/api/agenda/notifications')
+  if (!r.ok) return { notifications: [], unread: 0 }
+  return r.json()
+}
+
+export async function markNotificationsRead(): Promise<void> {
+  await apiFetch('/api/agenda/notifications/read', { method: 'POST' })
+}
+
+export async function fetchAgendaTasks(): Promise<AgendaTask[]> {
+  const r = await apiFetch('/api/agenda/tasks')
+  if (!r.ok) return []
+  return (await r.json()).tasks
+}
+
+export async function deleteAgendaTask(id: string): Promise<boolean> {
+  const r = await apiFetch(`/api/agenda/tasks/${id}`, { method: 'DELETE' })
+  return r.ok
+}
+
 export interface MemoryFact {
   id: string
   text: string
