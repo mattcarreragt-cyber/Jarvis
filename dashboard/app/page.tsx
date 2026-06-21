@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid, SlidersHorizontal, Webhook, BarChart3 } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid, SlidersHorizontal, Webhook, BarChart3, ShieldCheck } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -18,6 +18,7 @@ import GalleryPanel from '@/components/GalleryPanel'
 import SystemPanel from '@/components/SystemPanel'
 import HooksPanel from '@/components/HooksPanel'
 import StatsPanel from '@/components/StatsPanel'
+import CyberPanel from '@/components/CyberPanel'
 import { apiFetch, transcribeAudio, speak, fetchNotifications } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 
@@ -43,6 +44,7 @@ export default function Home() {
   const [showSystem, setShowSystem]   = useState(false)
   const [showHooks, setShowHooks]     = useState(false)
   const [showStats, setShowStats]     = useState(false)
+  const [showCyber, setShowCyber]     = useState(false)
   const [unread, setUnread]           = useState(0)
   const [voiceOut, setVoiceOut]       = useState(false)
 
@@ -50,7 +52,7 @@ export default function Home() {
     setShowUpload(false); setShowCloud(false); setShowHistory(false)
     setShowJobs(false); setShowMemory(false); setShowAnimate(false)
     setShowAgenda(false); setShowGallery(false); setShowSystem(false)
-    setShowHooks(false); setShowStats(false)
+    setShowHooks(false); setShowStats(false); setShowCyber(false)
   }, [])
 
   useEffect(() => {
@@ -322,6 +324,18 @@ export default function Home() {
             >
               <BarChart3 size={16} />
             </button>
+            {/* Cyber */}
+            <button
+              onClick={() => { const n = !showCyber; closePanels(); setShowCyber(n) }}
+              title="Cybersécurité (audit défensif)"
+              className={`p-1.5 rounded transition-colors ${
+                showCyber
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <ShieldCheck size={16} />
+            </button>
             {/* Memory */}
             <button
               onClick={() => { const n = !showMemory; closePanels(); setShowMemory(n) }}
@@ -400,6 +414,9 @@ export default function Home() {
             )}
             {showStats && (
               <StatsPanel onClose={() => setShowStats(false)} />
+            )}
+            {showCyber && (
+              <CyberPanel onClose={() => setShowCyber(false)} />
             )}
           </AnimatePresence>
         </div>

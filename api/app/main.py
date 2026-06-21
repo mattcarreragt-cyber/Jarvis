@@ -18,6 +18,7 @@ from app.router import route_smart
 from app.routers import agenda as agenda_router
 from app.routers import audio as audio_router
 from app.routers import backup as backup_router
+from app.routers import cyber as cyber_router
 from app.routers import docs as docs_router
 from app.routers import hooks as hooks_router
 from app.routers import images as images_router
@@ -79,6 +80,7 @@ app.include_router(system_router.router)
 app.include_router(hooks_router.router)
 app.include_router(backup_router.router)
 app.include_router(stats_router.router)
+app.include_router(cyber_router.router)
 
 
 @app.get("/api/health", tags=["system"])

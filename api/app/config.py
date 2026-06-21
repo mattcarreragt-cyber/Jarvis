@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://redis:6379/0"
     qdrant_url: str = "http://qdrant:6333"
 
+    # Cybersécurité (audit SSH défensif de TES hôtes)
+    cyber_ssh_key_path: str = ""   # chemin d'une clé privée SSH montée dans le conteneur
+
     # Comportement des modèles
     # unrestricted_mode : persona neutre (réponses directes, sans avertissements
     # superflus). Combine-le avec un modèle sans bridage dans capabilities.yaml.

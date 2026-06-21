@@ -123,6 +123,56 @@ export function hookUrl(token: string): string {
   return `${API}/api/hooks/${token}`
 }
 
+export interface CyberHost {
+  id: string
+  label: string
+  hostname: string
+  port: number
+  username: string
+}
+
+export interface CyberFinding {
+  check: string
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info'
+  title: string
+  detail: string | null
+  recommendation: string | null
+  remediation: string | null
+}
+
+export async function fetchCyberHosts(): Promise<CyberHost[]> {
+  const r = await apiFetch('/api/cyber/hosts')
+  if (!r.ok) return []
+  return (await r.json()).hosts
+}
+
+export async function addCyberHost(label: string, hostname: string, username: string, port: number): Promise<boolean> {
+  const r = await apiFetch('/api/cyber/hosts', {
+    method: 'POST', body: JSON.stringify({ label, hostname, username, port }),
+  })
+  return r.ok
+}
+
+export async function deleteCyberHost(id: string): Promise<boolean> {
+  const r = await apiFetch(`/api/cyber/hosts/${id}`, { method: 'DELETE' })
+  return r.ok
+}
+
+export async function runCyberAudit(id: string): Promise<{ ok: boolean; findings?: CyberFinding[]; summary?: Record<string, number>; error?: string }> {
+  const r = await apiFetch(`/api/cyber/hosts/${id}/audit`, { method: 'POST' })
+  if (!r.ok) return { ok: false, error: `HTTP ${r.status}` }
+  return r.json()
+}
+
+export async function remediateCyber(id: string, command: string): Promise<{ ok: boolean; output?: string; error?: string }> {
+  const r = await apiFetch(`/api/cyber/hosts/${id}/remediate`, {
+    method: 'POST', body: JSON.stringify({ command }),
+  })
+  const d = await r.json().catch(() => ({}))
+  if (!r.ok) return { ok: false, error: d.detail || `HTTP ${r.status}` }
+  return { ok: true, output: d.output }
+}
+
 export interface UsageStats {
   totals: { sessions: number; messages: number; facts: number; tasks: number; media: number }
   agent_usage: { agent: string; count: number }[]
