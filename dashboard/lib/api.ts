@@ -45,6 +45,22 @@ export async function fetchSession(id: string): Promise<HistoryMessage[]> {
   return r.json()
 }
 
+/** Télécharge l'export d'une conversation (md|json) via le navigateur. */
+export async function exportSession(id: string, format: 'md' | 'json'): Promise<boolean> {
+  const r = await apiFetch(`/api/sessions/${id}/export?format=${format}`)
+  if (!r.ok) return false
+  const blob = await r.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `jarvis_${id.slice(0, 8)}.${format}`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+  return true
+}
+
 export interface NextcloudStatus {
   configured: boolean
   sync_enabled: boolean

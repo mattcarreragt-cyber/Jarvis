@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, ChevronLeft, MessageSquare } from 'lucide-react'
-import { fetchSessions, fetchSession, SessionSummary, HistoryMessage } from '@/lib/api'
+import { Clock, ChevronLeft, MessageSquare, Download, FileJson } from 'lucide-react'
+import { fetchSessions, fetchSession, exportSession, SessionSummary, HistoryMessage } from '@/lib/api'
 
 interface Props {
   onRestore: (messages: { role: 'user' | 'assistant'; content: string; agent?: string }[]) => void
@@ -102,13 +102,33 @@ export default function HistoryPanel({ onRestore, onClose }: Props) {
             </div>
           ))}
           {!loading && messages.length > 0 && (
-            <button
-              onClick={restore}
-              className="w-full mt-4 py-2 text-[10px] tracking-widest text-[var(--cyan)]
-                         border border-[rgba(0,212,255,0.3)] rounded hover:bg-[rgba(0,212,255,0.08)]"
-            >
-              RESTAURER CETTE SESSION
-            </button>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                onClick={restore}
+                className="w-full py-2 text-[10px] tracking-widest text-[var(--cyan)]
+                           border border-[rgba(0,212,255,0.3)] rounded hover:bg-[rgba(0,212,255,0.08)]"
+              >
+                RESTAURER CETTE SESSION
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => selected && exportSession(selected, 'md')}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] tracking-widest
+                             text-[var(--text-dim)] border border-[rgba(0,212,255,0.2)] rounded
+                             hover:text-[var(--cyan)] hover:border-[var(--cyan)] transition-colors"
+                >
+                  <Download size={11} /> MARKDOWN
+                </button>
+                <button
+                  onClick={() => selected && exportSession(selected, 'json')}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] tracking-widest
+                             text-[var(--text-dim)] border border-[rgba(0,212,255,0.2)] rounded
+                             hover:text-[var(--cyan)] hover:border-[var(--cyan)] transition-colors"
+                >
+                  <FileJson size={11} /> JSON
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
