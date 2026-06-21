@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid, SlidersHorizontal, Webhook } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid, SlidersHorizontal, Webhook, BarChart3 } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -17,6 +17,7 @@ import AgendaPanel from '@/components/AgendaPanel'
 import GalleryPanel from '@/components/GalleryPanel'
 import SystemPanel from '@/components/SystemPanel'
 import HooksPanel from '@/components/HooksPanel'
+import StatsPanel from '@/components/StatsPanel'
 import { apiFetch, transcribeAudio, speak, fetchNotifications } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 
@@ -41,13 +42,15 @@ export default function Home() {
   const [showGallery, setShowGallery] = useState(false)
   const [showSystem, setShowSystem]   = useState(false)
   const [showHooks, setShowHooks]     = useState(false)
+  const [showStats, setShowStats]     = useState(false)
   const [unread, setUnread]           = useState(0)
   const [voiceOut, setVoiceOut]       = useState(false)
 
   const closePanels = useCallback(() => {
     setShowUpload(false); setShowCloud(false); setShowHistory(false)
     setShowJobs(false); setShowMemory(false); setShowAnimate(false)
-    setShowAgenda(false); setShowGallery(false); setShowSystem(false); setShowHooks(false)
+    setShowAgenda(false); setShowGallery(false); setShowSystem(false)
+    setShowHooks(false); setShowStats(false)
   }, [])
 
   useEffect(() => {
@@ -307,6 +310,18 @@ export default function Home() {
             >
               <Webhook size={16} />
             </button>
+            {/* Stats */}
+            <button
+              onClick={() => { const n = !showStats; closePanels(); setShowStats(n) }}
+              title="Statistiques d'usage"
+              className={`p-1.5 rounded transition-colors ${
+                showStats
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <BarChart3 size={16} />
+            </button>
             {/* Memory */}
             <button
               onClick={() => { const n = !showMemory; closePanels(); setShowMemory(n) }}
@@ -382,6 +397,9 @@ export default function Home() {
             )}
             {showHooks && (
               <HooksPanel onClose={() => setShowHooks(false)} />
+            )}
+            {showStats && (
+              <StatsPanel onClose={() => setShowStats(false)} />
             )}
           </AnimatePresence>
         </div>

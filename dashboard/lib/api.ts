@@ -123,6 +123,20 @@ export function hookUrl(token: string): string {
   return `${API}/api/hooks/${token}`
 }
 
+export interface UsageStats {
+  totals: { sessions: number; messages: number; facts: number; tasks: number; media: number }
+  agent_usage: { agent: string; count: number }[]
+  method_breakdown: { method: string; count: number }[]
+  messages_per_day: { day: string; count: number }[]
+  tools: { ok: number; error: number; top: { tool: string; count: number }[] }
+}
+
+export async function fetchStats(): Promise<UsageStats | null> {
+  const r = await apiFetch('/api/stats')
+  if (!r.ok) return null
+  return r.json()
+}
+
 export interface SystemInfo {
   paliers: { name: string; role: string; status: string }[]
   capabilities: { name: string; machine: string; model: string; vram_gb: number | null; description: string }[]
