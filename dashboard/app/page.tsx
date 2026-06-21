@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -14,6 +14,7 @@ import JobsPanel from '@/components/JobsPanel'
 import MemoryPanel from '@/components/MemoryPanel'
 import AnimatePanel from '@/components/AnimatePanel'
 import AgendaPanel from '@/components/AgendaPanel'
+import GalleryPanel from '@/components/GalleryPanel'
 import { apiFetch, transcribeAudio, speak, fetchNotifications } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 
@@ -35,12 +36,14 @@ export default function Home() {
   const [showMemory, setShowMemory]   = useState(false)
   const [showAnimate, setShowAnimate] = useState(false)
   const [showAgenda, setShowAgenda]   = useState(false)
+  const [showGallery, setShowGallery] = useState(false)
   const [unread, setUnread]           = useState(0)
   const [voiceOut, setVoiceOut]       = useState(false)
 
   const closePanels = useCallback(() => {
     setShowUpload(false); setShowCloud(false); setShowHistory(false)
-    setShowJobs(false); setShowMemory(false); setShowAnimate(false); setShowAgenda(false)
+    setShowJobs(false); setShowMemory(false); setShowAnimate(false)
+    setShowAgenda(false); setShowGallery(false)
   }, [])
 
   useEffect(() => {
@@ -264,6 +267,18 @@ export default function Home() {
             >
               <Clapperboard size={16} />
             </button>
+            {/* Galerie média */}
+            <button
+              onClick={() => { const n = !showGallery; closePanels(); setShowGallery(n) }}
+              title="Galerie média"
+              className={`p-1.5 rounded transition-colors ${
+                showGallery
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <LayoutGrid size={16} />
+            </button>
             {/* Memory */}
             <button
               onClick={() => { const n = !showMemory; closePanels(); setShowMemory(n) }}
@@ -330,6 +345,9 @@ export default function Home() {
             )}
             {showAgenda && (
               <AgendaPanel onClose={() => setShowAgenda(false)} />
+            )}
+            {showGallery && (
+              <GalleryPanel onClose={() => setShowGallery(false)} />
             )}
           </AnimatePresence>
         </div>

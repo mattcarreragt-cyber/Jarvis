@@ -43,10 +43,15 @@ async def _refresh(job: Job) -> None:
     if st.get("state") == "done" and st.get("media"):
         from urllib.parse import urlencode
         m = st["media"]
-        job.view_url = "/api/video/view?" + urlencode({
-            "filename": m["filename"], "subfolder": m["subfolder"], "type": m["type"],
-        })
+        params = {"filename": m["filename"], "subfolder": m["subfolder"], "type": m["type"]}
+        if job.base_url:
+            params["src"] = job.base_url
+        job.view_url = "/api/video/view?" + urlencode(params)
         job.state = "done"
+        # Enregistre la vidéo terminée dans la galerie durable
+        from app.media import gallery
+        await gallery.add_asset("video", m["filename"], m["subfolder"], m["type"],
+                                prompt=job.prompt, base_url=job.base_url)
     elif st.get("state") == "error":
         job.state = "error"
         job.error = st.get("error", "échec")

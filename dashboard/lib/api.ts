@@ -74,6 +74,25 @@ export async function triggerReembed(): Promise<{ ok: boolean; updated?: number;
   return r.json()
 }
 
+export interface MediaAsset {
+  id: string
+  kind: 'image' | 'video'
+  prompt: string | null
+  created_at: string
+  view_url: string
+}
+
+export async function fetchMedia(): Promise<MediaAsset[]> {
+  const r = await apiFetch('/api/media')
+  if (!r.ok) return []
+  return (await r.json()).assets
+}
+
+export async function deleteMedia(id: string): Promise<boolean> {
+  const r = await apiFetch(`/api/media/${id}`, { method: 'DELETE' })
+  return r.ok
+}
+
 export interface Notification {
   id: string
   text: string

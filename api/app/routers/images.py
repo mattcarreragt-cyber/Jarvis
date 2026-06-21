@@ -14,9 +14,9 @@ router = APIRouter(prefix="/api/images", tags=["images"])
 
 
 @router.get("/view")
-async def view(filename: str, subfolder: str = "", type: str = "output"):
+async def view(filename: str, subfolder: str = "", type: str = "output", src: str = ""):
     """Récupère une image générée depuis ComfyUI et la renvoie au navigateur."""
-    data = await comfyui.fetch_image(filename, subfolder, type)
+    data = await comfyui.fetch_image(filename, subfolder, type, base_url=src or None)
     if data is None:
         raise HTTPException(502, "Image indisponible (ComfyUI/Kubuntu injoignable)")
     return Response(content=data, media_type="image/png")

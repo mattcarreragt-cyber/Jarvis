@@ -95,6 +95,10 @@ class ImageAgent(Agent):
             "type":      result["type"],
         })
         url = f"/api/images/view?{query}"
+        # Enregistre dans la galerie durable
+        from app.media import gallery
+        await gallery.add_asset("image", result["filename"], result["subfolder"],
+                                result["type"], prompt=prompt, base_url=disp.get("base_url"))
         return AgentResponse(
             request_id=req.request_id, agent="image",
             status=AgentStatus.ok,
