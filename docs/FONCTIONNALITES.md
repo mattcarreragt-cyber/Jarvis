@@ -115,14 +115,24 @@ Différence : ⏰ **rappel** = te notifier · 🤖 **automatisation** = JARVIS *
 
 ---
 
-## 10. Domotique (Home Assistant)
+## 10. Domotique (Home Assistant) + capteurs
 
 | Action | Exemple |
 |--------|---------|
-| Voir les états | « **liste mes lumières** » |
+| Voir les lumières | « **liste mes lumières** » |
+| Lire les capteurs | « **température du salon** », « **humidité** », « **capteurs** » |
 | Agir | « **allume** light.salon » → bouton **CONFIRMER** |
+| Panneau | bouton 🏠 (capteurs en direct + bascule lumières/prises) |
 
-Toute action demande **confirmation** (sécurité). 🟢
+Toute action en chat demande **confirmation** ; dans le panneau, le bouton = action explicite. 🟢
+
+---
+
+## 10bis. Activation vocale « Hey Jarvis »
+
+Bouton **👂** dans le header → écoute le mot d'activation. Dis « **Hey Jarvis** »
+(app au premier plan) → JARVIS enregistre ta commande et la traite.
+Écran éteint / always-on → app Android native (voir `MOBILE_ANDROID.md`). 🟢
 
 ---
 

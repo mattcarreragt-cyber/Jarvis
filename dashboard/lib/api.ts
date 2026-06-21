@@ -123,6 +123,25 @@ export function hookUrl(token: string): string {
   return `${API}/api/hooks/${token}`
 }
 
+export interface HaState {
+  entity_id: string
+  state: string
+  friendly_name: string | null
+}
+
+export async function fetchHaStates(domain?: string): Promise<{ states: HaState[]; total: number }> {
+  const r = await apiFetch(`/api/ha/states${domain ? `?domain=${domain}` : ''}`)
+  if (!r.ok) return { states: [], total: 0 }
+  return r.json()
+}
+
+export async function haToggle(entity_id: string, on: boolean): Promise<boolean> {
+  const r = await apiFetch('/api/ha/toggle', {
+    method: 'POST', body: JSON.stringify({ entity_id, on }),
+  })
+  return r.ok
+}
+
 export async function remoteWake(): Promise<{ sunshine_up: boolean; host: string; woke?: boolean }> {
   const r = await apiFetch('/api/remote/wake', { method: 'POST' })
   if (!r.ok) return { sunshine_up: false, host: '?' }

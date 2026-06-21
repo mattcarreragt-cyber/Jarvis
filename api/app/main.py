@@ -20,6 +20,7 @@ from app.routers import audio as audio_router
 from app.routers import backup as backup_router
 from app.routers import cyber as cyber_router
 from app.routers import docs as docs_router
+from app.routers import ha as ha_router
 from app.routers import hooks as hooks_router
 from app.routers import images as images_router
 from app.routers import jobs as jobs_router
@@ -83,6 +84,7 @@ app.include_router(backup_router.router)
 app.include_router(stats_router.router)
 app.include_router(cyber_router.router)
 app.include_router(remote_router.router)
+app.include_router(ha_router.router)
 
 
 @app.get("/api/health", tags=["system"])

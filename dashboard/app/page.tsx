@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid, SlidersHorizontal, Webhook, BarChart3, ShieldCheck, MonitorPlay } from 'lucide-react'
+import { History, Upload, Cloud, Volume2, VolumeX, Film, Brain, Clapperboard, Bell, LayoutGrid, SlidersHorizontal, Webhook, BarChart3, ShieldCheck, MonitorPlay, Ear, EarOff } from 'lucide-react'
 import JarvisOrb, { OrbState } from '@/components/JarvisOrb'
 import ChatPanel, { Message, ConfirmationData } from '@/components/ChatPanel'
 import ChatInput from '@/components/ChatInput'
@@ -20,8 +20,11 @@ import HooksPanel from '@/components/HooksPanel'
 import StatsPanel from '@/components/StatsPanel'
 import CyberPanel from '@/components/CyberPanel'
 import RemotePanel from '@/components/RemotePanel'
+import HaPanel from '@/components/HaPanel'
+import { House } from 'lucide-react'
 import { apiFetch, transcribeAudio, speak, fetchNotifications } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
+import { useWakeWord } from '@/lib/useWakeWord'
 
 let msgCounter = 0
 const uid = () => `msg-${++msgCounter}`
@@ -47,6 +50,7 @@ export default function Home() {
   const [showStats, setShowStats]     = useState(false)
   const [showCyber, setShowCyber]     = useState(false)
   const [showRemote, setShowRemote]   = useState(false)
+  const [showHa, setShowHa]           = useState(false)
   const [unread, setUnread]           = useState(0)
   const [voiceOut, setVoiceOut]       = useState(false)
 
@@ -54,7 +58,8 @@ export default function Home() {
     setShowUpload(false); setShowCloud(false); setShowHistory(false)
     setShowJobs(false); setShowMemory(false); setShowAnimate(false)
     setShowAgenda(false); setShowGallery(false); setShowSystem(false)
-    setShowHooks(false); setShowStats(false); setShowCyber(false); setShowRemote(false)
+    setShowHooks(false); setShowStats(false); setShowCyber(false)
+    setShowRemote(false); setShowHa(false)
   }, [])
 
   useEffect(() => {
@@ -65,6 +70,11 @@ export default function Home() {
   }, [])
 
   const recorder = useVoiceRecorder()
+  const [wakeOn, setWakeOn] = useState(false)
+  const captureRef = useRef<() => void>(() => {})
+  const wake = useWakeWord(() => captureRef.current())
+  const wakeRef = useRef(wake)
+  wakeRef.current = wake
 
   const addMsg = useCallback((msg: Omit<Message, 'id'>) =>
     setMessages(prev => [...prev, { ...msg, id: uid() }]), [])
@@ -124,6 +134,32 @@ export default function Home() {
       else addMsg({ role: 'assistant', content: 'Micro inaccessible (permission refusée ?).', agent: 'system' })
     }
   }, [recorder, sendMessage, addMsg])
+
+  // Wake word : démarre/arrête l'écoute selon l'état (pause pendant l'enregistrement)
+  useEffect(() => {
+    if (wakeOn && wake.supported && !recorder.isRecording && !loading) wake.start()
+    else if (!wakeOn) wake.stop()
+  }, [wakeOn, wake, recorder.isRecording, loading])
+
+  // Capture vocale déclenchée par le wake word « Hey Jarvis » : enregistre ~6 s puis envoie.
+  const captureVoiceOnce = useCallback(async () => {
+    if (recorder.isRecording || loading) return
+    wakeRef.current?.stop()
+    const ok = await recorder.start()
+    if (!ok) return
+    setIsListening(true); setOrbState('listening')
+    await new Promise(r => setTimeout(r, 6000))
+    setIsListening(false); setOrbState('thinking')
+    const blob = await recorder.stop()
+    if (blob) {
+      try {
+        const text = await transcribeAudio(blob)
+        if (text) await sendMessage(text); else setOrbState('idle')
+      } catch { setOrbState('idle') }
+    } else setOrbState('idle')
+  }, [recorder, loading, sendMessage])
+
+  useEffect(() => { captureRef.current = captureVoiceOnce }, [captureVoiceOnce])
 
   const handleConfirm = useCallback(async (requestId: string, confirmed: boolean, msgId: string) => {
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, confirmResolved: true } : m))
@@ -200,6 +236,23 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Wake word « Hey Jarvis » */}
+            <button
+              onClick={() => setWakeOn(v => !v)}
+              disabled={!wake.supported}
+              title={!wake.supported ? 'Wake word non supporté par ce navigateur'
+                     : wakeOn ? 'Écoute « Hey Jarvis » active' : 'Activer « Hey Jarvis »'}
+              className={`relative p-1.5 rounded transition-colors disabled:opacity-30 ${
+                wakeOn ? 'text-[#00ffcc] bg-[rgba(0,255,200,0.1)]'
+                       : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              {wakeOn ? <Ear size={16} /> : <EarOff size={16} />}
+              {wakeOn && wake.listening && (
+                <motion.span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#00ffcc]"
+                  animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.4, repeat: Infinity }} />
+              )}
+            </button>
             {/* Notifications / agenda */}
             <button
               onClick={() => { const n = !showAgenda; closePanels(); setShowAgenda(n); if (n) setUnread(0) }}
@@ -350,6 +403,18 @@ export default function Home() {
             >
               <MonitorPlay size={16} />
             </button>
+            {/* Maison (Home Assistant) */}
+            <button
+              onClick={() => { const n = !showHa; closePanels(); setShowHa(n) }}
+              title="Maison & capteurs (Home Assistant)"
+              className={`p-1.5 rounded transition-colors ${
+                showHa
+                  ? 'text-[var(--cyan)] bg-[rgba(0,212,255,0.1)]'
+                  : 'text-[var(--text-dim)] hover:text-[var(--cyan)]'
+              }`}
+            >
+              <House size={16} />
+            </button>
             {/* Memory */}
             <button
               onClick={() => { const n = !showMemory; closePanels(); setShowMemory(n) }}
@@ -434,6 +499,9 @@ export default function Home() {
             )}
             {showRemote && (
               <RemotePanel onClose={() => setShowRemote(false)} />
+            )}
+            {showHa && (
+              <HaPanel onClose={() => setShowHa(false)} />
             )}
           </AnimatePresence>
         </div>

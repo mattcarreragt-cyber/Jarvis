@@ -35,8 +35,9 @@ class HomeAssistantAgent(Agent):
                         "lumières, capteurs, switches, chauffage, volets.",
             keywords=[
                 "home assistant", "domotique", "lumière", "lumiere", "lampe",
-                "chauffage", "volet", "climatisation", "capteur", "sensor",
-                "switch", "allume", "éteins", "température", "alarme",
+                "chauffage", "volet", "climatisation", "capteur", "capteurs", "sensor",
+                "switch", "allume", "éteins", "température", "humidité", "humidite",
+                "co2", "qualité air", "présence", "presence", "alarme",
                 "maison", "pièce", "salon", "chambre", "cuisine",
             ],
             tools=SPECS,
@@ -75,7 +76,8 @@ class HomeAssistantAgent(Agent):
             domain = "light"
         elif any(w in msg.lower() for w in ["switch", "prise"]):
             domain = "switch"
-        elif any(w in msg.lower() for w in ["température", "capteur", "sensor"]):
+        elif any(w in msg.lower() for w in ["température", "capteur", "sensor", "humidité",
+                                            "humidite", "co2", "présence", "presence", "qualité air"]):
             domain = "sensor"
         elif any(w in msg.lower() for w in ["climatisation", "chauffage", "climate"]):
             domain = "climate"
