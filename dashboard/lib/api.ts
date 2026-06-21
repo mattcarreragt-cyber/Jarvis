@@ -76,7 +76,7 @@ export async function triggerReembed(): Promise<{ ok: boolean; updated?: number;
 
 export interface MediaAsset {
   id: string
-  kind: 'image' | 'video'
+  kind: 'image' | 'video' | 'audio'
   prompt: string | null
   created_at: string
   view_url: string

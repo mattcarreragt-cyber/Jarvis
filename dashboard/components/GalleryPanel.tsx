@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { LayoutGrid, X, Trash2, Download, Film } from 'lucide-react'
+import { LayoutGrid, X, Trash2, Download, Film, Music } from 'lucide-react'
 import { fetchMedia, deleteMedia, apiUrl, MediaAsset } from '@/lib/api'
 
 interface Props { onClose: () => void }
@@ -60,11 +60,16 @@ export default function GalleryPanel({ onClose }: Props) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={apiUrl(a.view_url)} alt={a.prompt || ''}
                     className="w-full h-32 object-cover" />
-                ) : (
+                ) : a.kind === 'video' ? (
                   <video src={apiUrl(a.view_url)} muted loop
                     className="w-full h-32 object-cover"
                     onMouseEnter={e => e.currentTarget.play()}
                     onMouseLeave={e => e.currentTarget.pause()} />
+                ) : (
+                  <div className="w-full h-32 flex flex-col items-center justify-center gap-2 bg-[rgba(0,212,255,0.05)]">
+                    <Music size={24} className="text-[var(--cyan)]" />
+                    <audio controls src={apiUrl(a.view_url)} className="w-[90%] h-7" />
+                  </div>
                 )}
                 {a.kind === 'video' && (
                   <Film size={12} className="absolute top-1 left-1 text-white drop-shadow" />

@@ -75,6 +75,16 @@ capabilities:
     workflow: config/comfyui_video_workflow.json
     description: "Génération de vidéo 10-20 s (512x512, asynchrone, plusieurs min)"
 
+  audio:
+    machine: kubuntu
+    backend: comfyui
+    model: stable-audio-open
+    gpu: true
+    vram_gb: 6
+    exclusive: true              # décharge les LLM avant (8 Go)
+    workflow: config/comfyui_audio_workflow.json
+    description: "Génération de musique / sons / jingles (Stable Audio, ~15-47 s)"
+
   # ─── 3e palier : RunPod (GPU cloud) — gros modèles que 8 Go ne peut pas faire ─
   chat.xl:
     machine: runpod

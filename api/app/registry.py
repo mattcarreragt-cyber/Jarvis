@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.agents.base import AgentRegistry
 from app.agents.agenda_agent import AgendaAgent
+from app.agents.audio_agent import AudioAgent
 from app.agents.chat_agent import ChatAgent
 from app.agents.dev_agent import DevAgent
 from app.agents.echo import EchoAgent
@@ -32,6 +33,7 @@ def build_registry() -> AgentRegistry:
     registry.register(AgendaAgent())
     registry.register(ImageAgent())
     registry.register(VideoAgent())
+    registry.register(AudioAgent())
     registry.register(DevAgent())
     return registry
 

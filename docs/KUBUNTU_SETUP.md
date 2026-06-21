@@ -240,6 +240,23 @@ docker exec jarvis-compute-comfyui-1 sh -c '
 > `__FRAMES__`, `__FPS__`). SVD produit ~2-4 s par défaut ; sur 8 Go reste en
 > 1024×576. Sur RunPod, remplace par un workflow LTX/Stable-Video plus long.
 
+### Audio / musique (Stable Audio Open)
+
+L'agent `audio` génère musique/sons/jingles via ComfyUI. Modèle requis :
+
+```bash
+docker exec jarvis-compute-comfyui-1 sh -c '
+  cd /opt/ComfyUI/models/checkpoints && \
+  wget -O stable_audio_open_1.0.safetensors \
+  https://huggingface.co/stabilityai/stable-audio-open-1.0/resolve/main/model.safetensors
+'
+# Le T5 text encoder est téléchargé automatiquement au 1er run par ComfyUI.
+```
+
+> Workflow : `config/comfyui_audio_workflow.json` (tokens `__PROMPT__`,
+> `__NEG__`, `__SECONDS__`). Stable Audio Open génère jusqu'à ~47 s. Pour de la
+> musique chantée, remplace par un workflow **ACE-Step**.
+
 ---
 
 ## 6. Faster-Whisper (STT)

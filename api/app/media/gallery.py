@@ -22,7 +22,8 @@ def _view_url(kind: str, filename: str, subfolder: str, type_: str, base_url: st
     params = {"filename": filename, "subfolder": subfolder, "type": type_}
     if base_url:
         params["src"] = base_url
-    endpoint = "/api/images/view" if kind == "image" else "/api/video/view"
+    endpoint = {"image": "/api/images/view", "video": "/api/video/view",
+                "audio": "/api/audio/view"}.get(kind, "/api/images/view")
     return f"{endpoint}?{urlencode(params)}"
 
 

@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # Génération de vidéo (ComfyUI / AnimateDiff) — workflow paramétrable par template
     video_workflow_path: str = "config/comfyui_video_workflow.json"
     video_img2vid_workflow_path: str = "config/comfyui_img2vid_workflow.json"
+
+    # Génération audio / musique (ComfyUI / Stable Audio)
+    audio_workflow_path: str = "config/comfyui_audio_workflow.json"
+    audio_default_seconds: int = 15
+    audio_max_seconds: int = 47        # Stable Audio Open ~47s max
+    audio_timeout: int = 240
     video_fps: int = 16
     video_default_seconds: int = 10
     video_max_seconds: int = 20

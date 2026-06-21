@@ -1,0 +1,42 @@
+{
+  "_comment": "Template audio (Stable Audio Open) pour JARVIS. Tokens: __PROMPT__, __NEG__, __SECONDS__. Necessite stable_audio_open_1.0.safetensors dans models/checkpoints + le t5 dans models/text_encoders. Remplace par ton export API si tes noeuds different (ex. ACE-Step pour de la musique chantee).",
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": { "ckpt_name": "stable_audio_open_1.0.safetensors" }
+  },
+  "2": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "__PROMPT__", "clip": ["1", 1] }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "__NEG__", "clip": ["1", 1] }
+  },
+  "4": {
+    "class_type": "EmptyLatentAudio",
+    "inputs": { "seconds": "__SECONDS__", "batch_size": 1 }
+  },
+  "5": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 0,
+      "steps": 50,
+      "cfg": 5.0,
+      "sampler_name": "dpmpp_3m_sde_gpu",
+      "scheduler": "exponential",
+      "denoise": 1.0,
+      "model": ["1", 0],
+      "positive": ["2", 0],
+      "negative": ["3", 0],
+      "latent_image": ["4", 0]
+    }
+  },
+  "6": {
+    "class_type": "VAEDecodeAudio",
+    "inputs": { "samples": ["5", 0], "vae": ["1", 2] }
+  },
+  "7": {
+    "class_type": "SaveAudio",
+    "inputs": { "audio": ["6", 0], "filename_prefix": "jarvis_audio" }
+  }
+}

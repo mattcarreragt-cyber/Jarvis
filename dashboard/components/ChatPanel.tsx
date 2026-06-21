@@ -91,6 +91,8 @@ export default function ChatPanel({ messages, loading, onConfirm }: Props) {
                   />
                 ) : a.kind === 'video_job' ? (
                   <VideoArtifact key={i} statusUrl={a.url} />
+                ) : a.kind === 'audio' ? (
+                  <audio key={i} controls src={apiUrl(a.url)} className="mt-2 w-full" />
                 ) : null
               )}
 

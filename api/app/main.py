@@ -16,6 +16,7 @@ import app.pending as pending_store
 from app.registry import registry
 from app.router import route
 from app.routers import agenda as agenda_router
+from app.routers import audio as audio_router
 from app.routers import docs as docs_router
 from app.routers import images as images_router
 from app.routers import jobs as jobs_router
@@ -69,6 +70,7 @@ app.include_router(jobs_router.router)
 app.include_router(memory_router.router)
 app.include_router(agenda_router.router)
 app.include_router(media_router.router)
+app.include_router(audio_router.router)
 
 
 @app.get("/api/health", tags=["system"])
