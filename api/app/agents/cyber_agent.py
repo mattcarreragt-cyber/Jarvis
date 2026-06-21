@@ -70,17 +70,22 @@ class CyberAgent(Agent):
 
         findings = result["findings"]
         await store.save_findings(target["id"], findings)
-        return self._r(req, self._format(target, findings, result["summary"]), call)
+        return self._r(req, self._format(target, findings, result["summary"],
+                                         result.get("score"), result.get("grade")), call)
 
     @staticmethod
-    def _format(host: dict, findings: list[dict], summary: dict) -> str:
+    def _format(host: dict, findings: list[dict], summary: dict,
+                score: int | None = None, grade: str | None = None) -> str:
+        score_line = (f"**Score sécurité : {score}/100 ({grade})**\n"
+                      if score is not None else "")
         if not findings:
-            return f"✅ Audit de **{host['label']}** terminé — aucun problème détecté."
+            return (f"✅ Audit de **{host['label']}** terminé — aucun problème détecté.\n\n"
+                    f"{score_line}")
         order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
         findings = sorted(findings, key=lambda f: order.get(f["severity"], 9))
         head = " · ".join(f"{_SEV_ICON[s]} {summary[s]} {s}" for s in
                           ["critical", "high", "medium", "low", "info"] if summary.get(s))
-        lines = [f"## Audit sécurité — {host['label']}", "", head, ""]
+        lines = [f"## Audit sécurité — {host['label']}", "", score_line + head, ""]
         for f in findings:
             lines.append(f"### {_SEV_ICON[f['severity']]} {f['title']}  _({f['severity']})_")
             if f.get("detail"):

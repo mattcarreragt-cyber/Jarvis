@@ -11,11 +11,13 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 
-from app.cyber import ssh
+from app.cyber import nmap_scan, ssh
 
 logger = logging.getLogger("jarvis.cyber.audit")
 
 SEVERITIES = ["critical", "high", "medium", "low", "info"]
+# Pénalité de score par sévérité (base 100)
+_WEIGHTS = {"critical": 30, "high": 15, "medium": 6, "low": 2, "info": 0}
 
 
 @dataclass
@@ -145,10 +147,45 @@ async def _check_failed_logins(run) -> list[Finding]:
     return []
 
 
+async def _check_lynis(run) -> list[Finding]:
+    """Lance lynis sur l'hôte (audit système complet) si disponible."""
+    out = await run(
+        "command -v lynis >/dev/null 2>&1 && "
+        "sudo lynis audit system --quiet --no-colors 2>/dev/null | "
+        "grep -iE 'hardening index|warning|suggestion' | head -n 40 "
+        "|| echo __NOLYNIS__", timeout=900)
+    if "__NOLYNIS__" in out or not out.strip():
+        return [Finding("lynis", "info", "Lynis non installé (audit système approfondi indisponible)",
+                        "", "Installer lynis pour un audit système complet.",
+                        "sudo apt-get install -y lynis")]
+    f = []
+    m = re.search(r"hardening index[^\d]*(\d{1,3})", out, re.I)
+    if m:
+        idx = int(m.group(1))
+        sev = "high" if idx < 50 else "medium" if idx < 70 else "low" if idx < 85 else "info"
+        f.append(Finding("lynis", sev, f"Indice de durcissement Lynis : {idx}/100",
+                         "", "Suivre les suggestions Lynis pour augmenter l'indice."))
+    warns = [l.strip() for l in out.splitlines() if re.search(r"warning", l, re.I)][:8]
+    if warns:
+        f.append(Finding("lynis", "medium", f"{len(warns)} avertissement(s) Lynis",
+                         "\n".join(warns), "Traiter les avertissements remontés par Lynis."))
+    return f
+
+
 _CHECKS = [
     _check_root_users, _check_empty_passwords, _check_sshd, _check_firewall,
-    _check_updates, _check_ports, _check_docker, _check_failed_logins, _check_suid,
+    _check_updates, _check_ports, _check_docker, _check_failed_logins,
+    _check_lynis, _check_suid,
 ]
+
+
+def compute_score(findings: list[dict]) -> tuple[int, str]:
+    """Score 0-100 + grade A-F à partir des findings (par sévérité)."""
+    penalty = sum(_WEIGHTS.get(f.get("severity", "info"), 0) for f in findings)
+    score = max(0, 100 - penalty)
+    grade = ("A" if score >= 90 else "B" if score >= 75 else
+             "C" if score >= 60 else "D" if score >= 40 else "F")
+    return score, grade
 
 
 async def run_checks(run) -> list[Finding]:
@@ -161,15 +198,15 @@ async def run_checks(run) -> list[Finding]:
     return findings
 
 
-def _summary(findings: list[Finding]) -> dict:
+def _summary(findings: list[dict]) -> dict:
     s = {sev: 0 for sev in SEVERITIES}
     for f in findings:
-        s[f.severity] = s.get(f.severity, 0) + 1
+        s[f["severity"]] = s.get(f["severity"], 0) + 1
     return s
 
 
-async def run_audit(host: dict, runner=None) -> dict:
-    """Audit complet d'un hôte. runner injectable pour les tests."""
+async def run_audit(host: dict, runner=None, with_nmap: bool = True) -> dict:
+    """Audit complet d'un hôte (SSH + nmap + lynis + scoring). runner injectable."""
     close = None
     if runner is None:
         try:
@@ -178,10 +215,18 @@ async def run_audit(host: dict, runner=None) -> dict:
         except Exception as e:
             return {"ok": False, "error": f"Connexion SSH impossible : {e}"}
     try:
-        findings = await run_checks(runner)
-        return {"ok": True,
-                "findings": [asdict(f) for f in findings],
-                "summary": _summary(findings)}
+        findings = [asdict(f) for f in await run_checks(runner)]
     finally:
         if close:
             close()
+
+    # Scan réseau nmap (depuis le conteneur, n'utilise pas SSH)
+    if with_nmap and host.get("hostname"):
+        try:
+            findings += await nmap_scan.scan(host["hostname"])
+        except Exception as e:
+            logger.debug("nmap: %s", e)
+
+    score, grade = compute_score(findings)
+    return {"ok": True, "findings": findings, "summary": _summary(findings),
+            "score": score, "grade": grade}

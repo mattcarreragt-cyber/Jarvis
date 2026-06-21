@@ -92,6 +92,57 @@ async def test_agent_no_host_match():
     assert "précise l'hôte" in resp.content.lower() or "aucun" in resp.content.lower()
 
 
+def test_nmap_parse_detects_risky_services():
+    from app.cyber import nmap_scan
+    grep = ("Host: 10.0.0.1 ()\tStatus: Up\n"
+            "Host: 10.0.0.1 ()\tPorts: 22/open/tcp//ssh//OpenSSH/, "
+            "23/open/tcp//telnet///, 6379/open/tcp//redis///\tIgnored\n")
+    f = nmap_scan._parse_grepable(grep)
+    titles = " ".join(x["title"] for x in f)
+    assert "Telnet" in titles
+    assert "Redis" in titles
+    # telnet = critical
+    assert any(x["severity"] == "critical" for x in f)
+
+
+def test_nmap_parse_empty():
+    from app.cyber import nmap_scan
+    assert nmap_scan._parse_grepable("Host: x Status: Up") == []
+
+
+def test_compute_score_and_grade():
+    crit = [{"severity": "critical"}]
+    assert audit.compute_score(crit) == (70, "C")
+    clean = []
+    assert audit.compute_score(clean) == (100, "A")
+    many = [{"severity": "critical"}, {"severity": "high"}, {"severity": "high"}]
+    score, grade = audit.compute_score(many)   # 100-30-15-15 = 40
+    assert score == 40 and grade == "D"
+
+
+async def test_lynis_not_installed_finding():
+    run = _runner({"lynis": "__NOLYNIS__"})
+    f = await audit._check_lynis(run)
+    assert f and f[0].severity == "info"
+    assert "lynis" in f[0].title.lower()
+
+
+async def test_lynis_hardening_index_parsed():
+    run = _runner({"lynis": "Hardening index : 45 [######      ]\nWarning: weak config"})
+    f = await audit._check_lynis(run)
+    titles = " ".join(x.title for x in f)
+    assert "45/100" in titles
+    assert any(x.severity == "high" for x in f)   # index < 50
+
+
+async def test_audit_includes_score():
+    run = _runner({"($3==0)": "root", "ufw": "Status: active", "upgrade": "0",
+                   "lynis": "__NOLYNIS__"})
+    res = await audit.run_audit({"label": "x"}, runner=run, with_nmap=False)
+    assert "score" in res and "grade" in res
+    assert 0 <= res["score"] <= 100
+
+
 def test_router_cyber_keywords():
     from app.registry import registry
     from app.router import route

@@ -17,6 +17,7 @@ const SEV_COLOR: Record<string, string> = {
 export default function CyberPanel({ onClose }: Props) {
   const [hosts, setHosts] = useState<CyberHost[]>([])
   const [findings, setFindings] = useState<Record<string, CyberFinding[]>>({})
+  const [scores, setScores] = useState<Record<string, { score: number; grade: string }>>({})
   const [auditing, setAuditing] = useState<string>('')
   const [form, setForm] = useState({ label: '', hostname: '', username: 'root', port: 22 })
 
@@ -33,8 +34,11 @@ export default function CyberPanel({ onClose }: Props) {
     setAuditing(id)
     const res = await runCyberAudit(id)
     setAuditing('')
-    if (res.ok && res.findings) setFindings(f => ({ ...f, [id]: res.findings! }))
-    else alert(res.error || 'Audit impossible (SSH ?)')
+    if (res.ok && res.findings) {
+      setFindings(f => ({ ...f, [id]: res.findings! }))
+      if (res.score !== undefined && res.grade)
+        setScores(s => ({ ...s, [id]: { score: res.score!, grade: res.grade! } }))
+    } else alert(res.error || 'Audit impossible (SSH ?)')
   }
   const apply = async (id: string, cmd: string) => {
     if (!confirm(`Exécuter sur l'hôte :\n${cmd}`)) return
@@ -85,9 +89,18 @@ export default function CyberPanel({ onClose }: Props) {
         {hosts.map(h => (
           <div key={h.id} className="border border-[rgba(0,212,255,0.12)] rounded p-3 flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-[var(--cyan)]">{h.label}</span>
-                <span className="text-[10px] text-[var(--text-dim)] ml-2">{h.username}@{h.hostname}:{h.port}</span>
+                <span className="text-[10px] text-[var(--text-dim)]">{h.username}@{h.hostname}:{h.port}</span>
+                {scores[h.id] && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                    style={{
+                      color: scores[h.id].score >= 75 ? '#00ffcc' : scores[h.id].score >= 50 ? '#ffcc00' : '#ff3b3b',
+                      border: `1px solid ${scores[h.id].score >= 75 ? '#00ffcc' : scores[h.id].score >= 50 ? '#ffcc00' : '#ff3b3b'}`,
+                    }}>
+                    {scores[h.id].score}/100 · {scores[h.id].grade}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => audit(h.id)} disabled={auditing === h.id}

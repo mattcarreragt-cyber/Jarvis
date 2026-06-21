@@ -158,7 +158,7 @@ export async function deleteCyberHost(id: string): Promise<boolean> {
   return r.ok
 }
 
-export async function runCyberAudit(id: string): Promise<{ ok: boolean; findings?: CyberFinding[]; summary?: Record<string, number>; error?: string }> {
+export async function runCyberAudit(id: string): Promise<{ ok: boolean; findings?: CyberFinding[]; summary?: Record<string, number>; score?: number; grade?: string; error?: string }> {
   const r = await apiFetch(`/api/cyber/hosts/${id}/audit`, { method: 'POST' })
   if (!r.ok) return { ok: false, error: `HTTP ${r.status}` }
   return r.json()

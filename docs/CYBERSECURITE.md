@@ -61,9 +61,22 @@ L'audit est **100 % lecture**. Checks inclus :
 | docker | conteneurs exposés / privilégiés |
 | auth | tentatives de connexion en force brute |
 | suid | binaires SUID risqués |
+| **nmap** | scan réseau (depuis l'API) : ports/services exposés, services sensibles (Telnet, RDP, Redis, Docker API…) |
+| **lynis** | audit système approfondi sur l'hôte : indice de durcissement + avertissements |
 
 Chaque finding a une **sévérité** (🟥 critical → ⬜ info), une **recommandation**
 et, si possible, une **commande de correctif**.
+
+### Score de sécurité
+Chaque audit calcule un **score 0-100** et un **grade A-F** (pénalités pondérées
+par sévérité : critical −30, high −15, medium −6, low −2). Affiché dans le chat
+et en badge sur l'hôte dans le panneau.
+
+### Pré-requis nmap / lynis
+- **nmap** : installé automatiquement dans le conteneur API (voir `api/Dockerfile`).
+  Scanne l'hôte cible depuis l'API.
+- **lynis** : doit être installé **sur l'hôte cible** (`sudo apt-get install lynis`).
+  S'il manque, un finding le recommande. Nécessite sudo NOPASSWD pour l'audit complet.
 
 > Analyses poussées = parfois lentes (ex. recherche SUID sur tout le disque).
 > C'est voulu : on privilégie l'exhaustivité.
