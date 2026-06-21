@@ -33,7 +33,12 @@ export default function AgendaPanel({ onClose }: Props) {
 
   const describe = (t: AgendaTask) => {
     if (t.schedule_kind === 'daily') return `chaque jour à ${t.time_of_day}`
-    if (t.schedule_kind === 'interval') return `toutes les ${Math.round((t.interval_sec || 0) / 60)} min`
+    if (t.schedule_kind === 'interval') {
+      const s = t.interval_sec || 0
+      if (s === 604800) return `chaque semaine à ${t.time_of_day ?? ''}`.trim()
+      if (s >= 3600) return `toutes les ${Math.round(s / 3600)} h`
+      return `toutes les ${Math.round(s / 60)} min`
+    }
     return `le ${t.next_run.slice(0, 16).replace('T', ' à ')}`
   }
   const icon = (t: AgendaTask) =>
@@ -91,7 +96,7 @@ export default function AgendaPanel({ onClose }: Props) {
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-[var(--text)]">{t.payload}</span>
                 <span className="flex items-center gap-1 text-[9px] text-[var(--text-dim)]">
-                  {icon(t)} {describe(t)} · {t.kind === 'prompt' ? '🤖 auto' : '⏰ rappel'}
+                  {icon(t)} {describe(t)} · {t.kind === 'cyber' ? '🛡️ audit' : t.kind === 'prompt' ? '🤖 auto' : '⏰ rappel'}
                   {!t.enabled && ' · terminé'}
                 </span>
               </div>

@@ -108,6 +108,24 @@ curl -X POST -H "X-API-Key: TA_CLE" -H "Content-Type: application/json" \
 
 ---
 
+## 4bis. Audits planifiés + alerte sur baisse de score
+
+Couple le module cyber à l'agenda. Dans le chat :
+
+- « **chaque jour à 8h, audite unraid** »
+- « **chaque lundi à 9h, audite tous mes hôtes** » (hebdomadaire)
+- « **toutes les 12 heures, audite kubuntu** »
+
+À chaque exécution, JARVIS relance l'audit, **historise le score**, et envoie une
+**notification** (cloche 🔔). Si le **score a baissé** depuis le dernier audit, la
+notification le signale (`⚠️ BAISSE 90→70`), de même que l'apparition de findings
+🟥 critiques / 🟧 élevés. Idéal pour détecter une régression de sécurité sans y penser.
+
+> Ces tâches apparaissent dans le panneau Agenda avec l'étiquette **🛡️ audit**.
+> « annule tout » les supprime ; le panneau permet d'en retirer une à une.
+
+---
+
 ## 5. Étendre les analyses
 
 Les checks sont dans `api/app/cyber/audit.py` (`_CHECKS`). Ajouter un check =

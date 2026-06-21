@@ -27,9 +27,17 @@ _COMMAND = re.compile(
     r"\b(résume|resume|cherche|trouve|génère|genere|analyse|liste|calcule|"
     r"transcris|vérifie|verifie|surveille|rapporte)\b", re.I,
 )
+_CYBER = re.compile(r"\b(audit|audite|auditer|s[ée]curit\w*|faille\w*|cyber|vuln\w*)\b", re.I)
+_WEEKDAYS = {
+    "lundi": 0, "mardi": 1, "mercredi": 2, "jeudi": 3,
+    "vendredi": 4, "samedi": 5, "dimanche": 6,
+}
+_WEEKDAY = re.compile(r"\b(?:chaque\s+|tous\s+les\s+)?(lundi|mardi|mercredi|jeudi|"
+                      r"vendredi|samedi|dimanche)s?\b", re.I)
 _STRIP = re.compile(
     r"\b(rappelle[-\s]?moi|rappel|planifie|programme|automatise|chaque\s+jour|"
-    r"tous\s+les\s+jours|quotidien|d'|de\s|que\s|:)\b", re.I,
+    r"tous\s+les\s+jours|quotidien|chaque|tous\s+les|lundi|mardi|mercredi|jeudi|"
+    r"vendredi|samedi|dimanche|d'|de\s|que\s|:)\b", re.I,
 )
 
 
@@ -86,7 +94,12 @@ class AgendaAgent(Agent):
                 "- « mes rappels » · « annule tout »",
                 "agenda.help", {})
 
-        kind = "prompt" if _COMMAND.search(parsed["payload"]) else "reminder"
+        if _CYBER.search(msg):
+            kind = "cyber"
+        elif _COMMAND.search(parsed["payload"]):
+            kind = "prompt"
+        else:
+            kind = "reminder"
         tid = await store.add_task(
             label=parsed["payload"][:80], kind=kind, payload=parsed["payload"],
             schedule_kind=parsed["schedule_kind"], next_run=parsed["next_run"],
@@ -97,7 +110,7 @@ class AgendaAgent(Agent):
                            "agenda.add", {}, status=AgentStatus.error)
 
         when = self._describe(parsed)
-        emoji = "🤖" if kind == "prompt" else "⏰"
+        emoji = "🛡️" if kind == "cyber" else "🤖" if kind == "prompt" else "⏰"
         return self._r(req, f"{emoji} C'est planifié : **{parsed['payload']}** — {when}.",
                        "agenda.add", {"id": tid, "kind": kind})
 
@@ -109,6 +122,7 @@ class AgendaAgent(Agent):
         delay = _DELAY.search(msg)
         time_m = _TIME.search(msg)
         daily = _DAILY.search(msg)
+        weekday = _WEEKDAY.search(msg)
 
         payload = self._extract_payload(msg)
         if not payload:
@@ -118,6 +132,15 @@ class AgendaAgent(Agent):
             sec = _unit_seconds(int(interval.group(1)), interval.group(2))
             return {"payload": payload, "schedule_kind": "interval",
                     "interval_sec": sec, "next_run": now + timedelta(seconds=sec)}
+
+        # Hebdomadaire : « chaque lundi à 8h » → interval 7j ancré au bon jour/heure
+        if weekday:
+            wd = _WEEKDAYS[weekday.group(1).lower()]
+            tod = self._time_str(time_m) if time_m else "09:00"
+            return {"payload": payload, "schedule_kind": "interval",
+                    "interval_sec": 7 * 24 * 3600,
+                    "time_of_day": tod,
+                    "next_run": self._next_weekday(now, wd, tod)}
 
         if daily and time_m:
             tod = self._time_str(time_m)
@@ -142,6 +165,15 @@ class AgendaAgent(Agent):
         mm = int(m.group(2)) if m.group(2) else 0
         return f"{hh:02d}:{mm:02d}"
 
+    @staticmethod
+    def _next_weekday(now: datetime, weekday: int, tod: str) -> datetime:
+        hh, mm = (int(x) for x in tod.split(":"))
+        target = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+        days = (weekday - now.weekday()) % 7
+        if days == 0 and target <= now:
+            days = 7
+        return target + timedelta(days=days)
+
     def _extract_payload(self, msg: str) -> str:
         s = _INTERVAL.sub(" ", msg)
         s = _DELAY.sub(" ", s)
@@ -157,6 +189,12 @@ class AgendaAgent(Agent):
             return f"chaque jour à {t.get('time_of_day')}"
         if sk == "interval":
             sec = t.get("interval_sec") or 0
+            if sec == 7 * 24 * 3600:
+                return f"chaque semaine à {t.get('time_of_day', '')}".rstrip()
+            if sec == 24 * 3600:
+                return "chaque jour"
+            if sec >= 3600:
+                return f"toutes les {sec // 3600} h"
             return f"toutes les {sec // 60} min" if sec >= 60 else f"toutes les {sec}s"
         nr = t["next_run"]
         nr = nr if isinstance(nr, str) else nr.isoformat()

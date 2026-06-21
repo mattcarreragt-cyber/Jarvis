@@ -23,6 +23,10 @@ async def _execute(task: dict) -> None:
     label = task["label"]
     if task["kind"] == "reminder":
         await store.add_notification(f"⏰ {task['payload']}", source=label)
+    elif task["kind"] == "cyber":
+        from app.cyber.scheduled import run_and_alert
+        text = await run_and_alert(task["payload"])
+        await store.add_notification(text, source=label)
     else:  # prompt
         text = await _run_prompt(task["payload"])
         await store.add_notification(text, source=label)
