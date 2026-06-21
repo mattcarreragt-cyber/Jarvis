@@ -37,4 +37,5 @@ async def system_overview():
         "paliers": paliers,
         "capabilities": list_capabilities(),
         "agents": [{"name": s.name, "description": s.description} for s in registry.specs()],
+        "unrestricted_mode": settings.unrestricted_mode,
     }

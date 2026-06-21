@@ -7,13 +7,7 @@ retombe sur l'affichage des extraits bruts.
 from __future__ import annotations
 
 from app.llm.ollama import CHAT_MODEL_FAST, chat
-
-_SYSTEM = (
-    "Tu es JARVIS, un assistant local. Réponds en français, de façon concise et "
-    "factuelle, en t'appuyant UNIQUEMENT sur les extraits fournis. Cite les sources "
-    "entre crochets, ex. [1]. Si les extraits ne suffisent pas, dis-le clairement "
-    "sans inventer."
-)
+from app.llm.persona import rag_system
 
 
 def _format_context(hits: list[dict]) -> str:
@@ -34,7 +28,7 @@ async def synthesize(
         return None
     context = _format_context(hits)
     messages = [
-        {"role": "system", "content": _SYSTEM},
+        {"role": "system", "content": rag_system()},
         {"role": "user", "content": f"Extraits :\n\n{context}\n\nQuestion : {question}"},
     ]
     return await chat(messages, model=model, temperature=0.3)

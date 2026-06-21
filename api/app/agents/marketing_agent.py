@@ -95,11 +95,13 @@ class MarketingAgent(Agent):
         ctx = "\n\n".join(
             f"[{r['source']}] {r['text'].strip()}" for r in results
         ) or "(aucun document de référence ingéré)"
+        from app.llm.persona import marketing_extra
         system = (
             "Tu es l'assistant marketing de la marque Xenum, créateur de contenu expert. "
             "Réponds en français. Appuie-toi sur les extraits de documents fournis comme "
             "source de vérité produit ; n'invente pas de caractéristiques. "
             + self._INTENT_GUIDE.get(intent, self._INTENT_GUIDE["generic"])
+            + marketing_extra()
         )
         messages = [
             {"role": "system", "content": system},

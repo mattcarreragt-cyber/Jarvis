@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     redis_url: str = "redis://redis:6379/0"
     qdrant_url: str = "http://qdrant:6333"
 
+    # Comportement des modèles
+    # unrestricted_mode : persona neutre (réponses directes, sans avertissements
+    # superflus). Combine-le avec un modèle sans bridage dans capabilities.yaml.
+    # Voir docs/MODELES_SANS_RESTRICTION.md.
+    unrestricted_mode: bool = False
+
     # Compute node (Kubuntu)
     kubuntu_url: str = "http://localhost:11434"
     kubuntu_mac: str = ""

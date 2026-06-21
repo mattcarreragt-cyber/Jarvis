@@ -16,13 +16,8 @@ from __future__ import annotations
 from app.agents.base import Agent
 from app.contracts import AgentRequest, AgentResponse, AgentSpec, AgentStatus, ToolCall, ToolResult
 from app.llm.ollama import chat
+from app.llm.persona import assistant_system
 from app.orchestration.scheduler import dispatch, resolve_chat_hint
-
-_SYSTEM = (
-    "Tu es JARVIS, un assistant personnel local, francophone, précis et concis. "
-    "Tu tournes entièrement en local chez l'utilisateur (local-first). "
-    "Réponds directement, sans formules creuses. Si tu ne sais pas, dis-le."
-)
 
 
 class ChatAgent(Agent):
@@ -38,7 +33,7 @@ class ChatAgent(Agent):
         )
 
     def _build_messages(self, req: AgentRequest) -> list[dict]:
-        messages: list[dict] = [{"role": "system", "content": _SYSTEM}]
+        messages: list[dict] = [{"role": "system", "content": assistant_system()}]
 
         ctx = req.context
         if ctx.relevant_memories:

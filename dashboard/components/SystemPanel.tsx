@@ -57,6 +57,15 @@ export default function SystemPanel({ onClose }: Props) {
           <p className="text-xs text-[var(--text-dim)] tracking-widest">CHARGEMENT…</p>
         ) : (
           <>
+            {/* Mode modèles */}
+            <div className="flex items-center justify-between border border-[rgba(0,212,255,0.12)] rounded px-3 py-2">
+              <span className="text-[10px] tracking-widest text-[var(--text-dim)]">MODE MODÈLES</span>
+              <span className="text-[10px] tracking-widest"
+                style={{ color: info.unrestricted_mode ? '#ffcc00' : '#4a7a96' }}>
+                {info.unrestricted_mode ? 'SANS RESTRICTION' : 'STANDARD'}
+              </span>
+            </div>
+
             {/* Paliers */}
             <section className="flex flex-col gap-2">
               <h3 className="text-[10px] tracking-widest text-[var(--text-dim)]">PALIERS DE CALCUL</h3>

@@ -6,6 +6,7 @@
 - **DEPLOIEMENT.md** — guide maître du déploiement (les 4 phases enchaînées)
 - **COMPOSANTS_EXPLIQUES.md** — à quoi sert chaque logiciel installé
 - **DEPANNAGE_COMPLET.md** — tous les problèmes possibles et leurs solutions
+- **MODELES_SANS_RESTRICTION.md** — utiliser des modèles sans bridage (lab local)
 
 ## 🚀 Guides d'installation détaillés (par machine)
 - **UNRAID_SETUP.md** — le cœur (interface + base de données + mémoire)
