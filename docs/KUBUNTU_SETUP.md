@@ -219,9 +219,8 @@ docker exec jarvis-compute-comfyui-1 sh -c '
 > avant. Durée 10-20 s = ~5-15 min de calcul. Si OOM, baisse `VIDEO_FPS` ou la
 > résolution dans le workflow (512→384), ou réduis `context_length`.
 
-> **Aucun filtre de contenu :** les modèles AnimateDiff locaux ne font aucune
-> modération (usage lab). Reste dans le cadre légal (pas de personnes réelles sans
-> consentement, pas de contenu illégal).
+> **Aucun filtre de contenu :** les modèles AnimateDiff/SVD locaux ne font aucune
+> modération — c'est le fonctionnement normal des modèles open en local (lab hors ligne).
 
 ### Image → vidéo (animer une image existante, SVD)
 

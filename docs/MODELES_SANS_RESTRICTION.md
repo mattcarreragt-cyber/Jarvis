@@ -1,12 +1,9 @@
 # 🔓 Modèles & IA sans restriction (lab local)
 
 Comment faire tourner JARVIS avec des modèles **sans bridage**, sur chaque
-modalité (texte, RAG, image, vidéo, audio). Pour un usage **local, privé, de
-laboratoire**.
-
-> Cadre : usage perso et **légal**. Les modèles open locaux n'ont aucun filtre,
-> mais ça ne dispense pas du droit (pas de contenu illégal type CSAM, pas de
-> représentation de personnes réelles sans consentement).
+modalité (texte, RAG, image, vidéo, audio). Pour un **laboratoire hors ligne,
+privé et personnel** (typiquement : étudier les comportements des modèles pour
+concevoir de futurs garde-fous).
 
 ---
 
