@@ -14,7 +14,7 @@ from app.health import get_health
 from app.memory import memory
 import app.pending as pending_store
 from app.registry import registry
-from app.router import route
+from app.router import route_smart
 from app.routers import agenda as agenda_router
 from app.routers import audio as audio_router
 from app.routers import docs as docs_router
@@ -88,7 +88,7 @@ async def list_agents():
 async def chat(req: ChatRequest) -> AgentResponse:
     request_id = str(uuid.uuid4())
 
-    decision = route(req.message, registry, force_agent=req.force_agent)
+    decision = await route_smart(req.message, registry, force_agent=req.force_agent)
     logger.info("route session=%s agent=%s method=%s score=%s",
                 req.session_id, decision.agent, decision.method, decision.score)
 

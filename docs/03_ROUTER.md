@@ -40,6 +40,13 @@ def route(request) -> AgentSpec:
 - Le fallback LLM reçoit la liste des `AgentSpec.description` comme « tools » et
   doit en sélectionner exactement un (ou `none` → agent de conversation par défaut).
 
+> **Statut : implémenté.** `app/router.py` expose `route()` (passe 1, règles) et
+> `route_smart()` (passe 1 + passe 2). La passe 2 (`classify_llm`) n'est déclenchée
+> que si aucun mot-clé ne matche, et reste *best-effort* : si Ollama/Kubuntu est
+> injoignable, on conserve le repli `chat` sans erreur. `main.chat` utilise
+> `route_smart`; la méthode retenue (`rules` | `llm` | `forced`) est journalisée
+> dans `routing_logs`.
+
 ## Garde-fous
 
 - **Timeout LLM** : si le fallback dépasse N ms, repli sur le meilleur score règles.

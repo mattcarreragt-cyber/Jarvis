@@ -1,15 +1,20 @@
-"""Router d'agent — passe 1 à règles (voir docs/03_ROUTER.md).
+"""Router d'agent — passe 1 à règles + passe 2 LLM (voir docs/03_ROUTER.md).
 
-Le fallback LLM (passe 2) sera branché à l'étape 7. Pour l'instant, si la
-confiance des règles est insuffisante, on route vers l'agent par défaut.
+- Passe 1 (`route`) : scoring par mots-clés, synchrone, sans dépendance.
+- Passe 2 (`route_smart`) : si la passe 1 n'est pas confiante (aucun mot-clé),
+  on demande au LLM (chat.fast) de classer l'intention. Best-effort : si le LLM
+  est injoignable (Kubuntu éteint), on conserve le repli de la passe 1 (chat).
 """
 
 from __future__ import annotations
 
+import logging
 import re
 
 from app.agents.base import AgentRegistry
 from app.contracts import RouteDecision
+
+logger = logging.getLogger("jarvis.router")
 
 HIGH_CONFIDENCE = 1.0   # au moins un keyword matché
 MARGIN = 0.0            # marge minimale avec le 2e (souple au départ)
@@ -47,3 +52,54 @@ def route(message: str, registry: AgentRegistry, force_agent: str | None = None)
 
     # Passe 2 (LLM) non encore branchée → fallback agent par défaut
     return RouteDecision(agent=DEFAULT_AGENT, method="rules", score=0.0)
+
+
+# Agents exclus de la classification LLM (fallback / méta)
+_NON_ROUTABLE = {"echo", "chat"}
+
+
+async def classify_llm(message: str, registry: AgentRegistry) -> str | None:
+    """Demande au LLM de choisir l'agent le plus adapté. None si indisponible."""
+    specs = [s for s in registry.specs() if s.name not in _NON_ROUTABLE]
+    if not specs:
+        return None
+    listing = "\n".join(f"- {s.name} : {s.description}" for s in specs)
+    system = (
+        "Tu es un routeur d'intention pour un assistant. À partir du message de "
+        "l'utilisateur, choisis l'agent le plus adapté dans la liste. Réponds "
+        "UNIQUEMENT par le nom exact de l'agent, ou par 'chat' si aucun ne convient. "
+        "Aucune explication."
+    )
+    user = f"Agents disponibles :\n{listing}\n\nMessage : {message}\n\nAgent :"
+    try:
+        from app.llm.ollama import chat
+        resp = await chat(
+            [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.0,
+        )
+    except Exception as e:
+        logger.debug("classify_llm: %s", e)
+        return None
+    if not resp:
+        return None
+    low = resp.strip().lower()
+    # Match le nom d'agent présent dans la réponse (le plus long d'abord)
+    for name in sorted((s.name for s in specs), key=len, reverse=True):
+        if re.search(rf"\b{re.escape(name)}\b", low):
+            return name
+    return None
+
+
+async def route_smart(message: str, registry: AgentRegistry,
+                      force_agent: str | None = None) -> RouteDecision:
+    """Passe 1 (règles) puis, si non confiant, passe 2 (LLM)."""
+    decision = route(message, registry, force_agent)
+    # Confiant (forcé ou keyword matché) → on garde
+    if force_agent or (decision.score and decision.score >= HIGH_CONFIDENCE):
+        return decision
+    # Ambigu / aucun mot-clé → classification LLM (best-effort)
+    name = await classify_llm(message, registry)
+    if name and registry.get(name):
+        logger.info("route LLM: '%s' → %s", message[:40], name)
+        return RouteDecision(agent=name, method="llm", score=None)
+    return decision
