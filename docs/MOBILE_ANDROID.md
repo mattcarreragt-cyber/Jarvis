@@ -44,21 +44,26 @@ conditionnel), scripts npm et `scripts/build-apk.sh`. **Aucune réécriture.**
 ### Build, étape par étape
 ```bash
 cd dashboard
-npm install                       # installe aussi @capacitor/*
+npm install                       # dépendances web normales
 
-# 1) Build statique de la webapp, pointant vers ton API Unraid
+# 1) Build statique + install Capacitor à la demande + cap sync, pointant vers ton API Unraid
 NEXT_PUBLIC_API_URL=http://192.168.1.50:8000 \
 NEXT_PUBLIC_API_KEY=ta-cle-ou-vide \
-  ./scripts/build-apk.sh          # build out/ + cap add android (1ʳᵉ fois) + cap sync
+  ./scripts/build-apk.sh          # build out/ + (1ʳᵉ fois) install Capacitor + cap add android + cap sync
 
 # 2) Ouvre Android Studio et compile
 npx cap open android              # puis : Build > Build Bundle(s)/APK(s) > Build APK
 ```
 L'APK se trouve ensuite dans `android/app/build/outputs/apk/`.
 
-> Raccourci une fois `npm install` fait : `npm run apk` (build + sync + open).
+> Raccourci : `npm run apk` (= `./scripts/build-apk.sh`).
 > `next export` n'existe plus en Next 16 : le statique est produit par
 > `BUILD_TARGET=export next build` → dossier `out/` (déjà câblé).
+
+> ⚠️ **Important** : Capacitor **n'est volontairement pas** dans `package.json`.
+> Il ne sert qu'à fabriquer l'APK sur **ta** machine et casserait le `npm ci` du
+> build Docker (lockfile désynchronisé). Le script `build-apk.sh` l'installe à la
+> demande avec `npm install --no-save`, sans modifier le lockfile.
 
 ### a) Permission micro (pour la voix / wake word)
 Après `cap add android`, édite `android/app/src/main/AndroidManifest.xml` et ajoute
