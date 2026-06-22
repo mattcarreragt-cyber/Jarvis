@@ -21,11 +21,11 @@ services:
     build: ./api
     restart: unless-stopped
     ports:
-      - "127.0.0.1:4500:8000"
+      - "4500:4500"
     env_file: .env
     # Lance les migrations puis démarre l'API
     command: >
-      sh -c "cd /app && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 4500"
+      sh -c "cd /app && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 4500 --workers 1"
     volumes:
       # Docker socket — permet à l'Agent Unraid de lire les conteneurs
       - /var/run/docker.sock:/var/run/docker.sock:ro
