@@ -8,3 +8,4 @@ node_modules/
 dist/
 *.egg-info/
 .DS_Store
+JARVIS_DOCS.zip
