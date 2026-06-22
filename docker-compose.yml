@@ -42,7 +42,7 @@ services:
       redis:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
+        condition: service_started
     networks:
       - jarvis
 
@@ -82,12 +82,6 @@ services:
     restart: unless-stopped
     volumes:
       - qdrant_data:/qdrant/storage
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:6333/healthz 2>/dev/null | grep -q ok || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-      start_period: 10s
     networks:
       - jarvis
 
