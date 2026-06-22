@@ -32,24 +32,48 @@ Le dashboard est désormais une **PWA** :
 
 ---
 
-## 3. Étape 2 — APK via Capacitor (quand tu voudras le natif)
+## 3. Étape 2 — APK via Capacitor (scaffolding **déjà en place**)
 
-[Capacitor](https://capacitorjs.com) emballe la **même** webapp dans une APK
-(WebView), avec accès aux API natives. Aucune réécriture.
+[Capacitor](https://capacitorjs.com) emballe la **même** webapp en APK (WebView).
+Le projet est déjà configuré : `capacitor.config.ts`, `next.config.ts` (export
+conditionnel), scripts npm et `scripts/build-apk.sh`. **Aucune réécriture.**
 
+### Pré-requis (sur TA machine, pas le serveur)
+- Node 18+ et **Android Studio** (SDK + JDK 17).
+
+### Build, étape par étape
 ```bash
 cd dashboard
-npm i @capacitor/core @capacitor/cli @capacitor/android
-npx cap init JARVIS com.jarvis.app --web-dir=out
-# build statique de la webapp pointant vers ton API
-NEXT_PUBLIC_API_URL=http://IP_UNRAID:8000 npm run build && npx next export -o out
-npx cap add android
-npx cap copy android
-npx cap open android       # ouvre Android Studio → Build APK
-```
+npm install                       # installe aussi @capacitor/*
 
-> L'APK pointe vers ton API Unraid sur le LAN (ou via un reverse-proxy HTTPS pour
-> l'accès hors maison + le micro).
+# 1) Build statique de la webapp, pointant vers ton API Unraid
+NEXT_PUBLIC_API_URL=http://192.168.1.50:8000 \
+NEXT_PUBLIC_API_KEY=ta-cle-ou-vide \
+  ./scripts/build-apk.sh          # build out/ + cap add android (1ʳᵉ fois) + cap sync
+
+# 2) Ouvre Android Studio et compile
+npx cap open android              # puis : Build > Build Bundle(s)/APK(s) > Build APK
+```
+L'APK se trouve ensuite dans `android/app/build/outputs/apk/`.
+
+> Raccourci une fois `npm install` fait : `npm run apk` (build + sync + open).
+> `next export` n'existe plus en Next 16 : le statique est produit par
+> `BUILD_TARGET=export next build` → dossier `out/` (déjà câblé).
+
+### a) Permission micro (pour la voix / wake word)
+Après `cap add android`, édite `android/app/src/main/AndroidManifest.xml` et ajoute
+dans `<manifest>` :
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.INTERNET" />
+```
+La WebView Capacitor accorde `getUserMedia` une fois la permission Android donnée
+(Android demandera l'autorisation au 1ᵉʳ usage du micro).
+
+### b) HTTP en clair sur le LAN
+`capacitor.config.ts` met déjà `androidScheme: 'http'` + `cleartext: true`, donc
+les appels vers `http://192.168.1.50:8000` passent sans erreur de contenu mixte.
+(Hors maison, préfère un reverse-proxy **HTTPS** — voir §6.)
 
 ---
 
