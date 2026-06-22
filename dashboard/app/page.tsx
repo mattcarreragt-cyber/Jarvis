@@ -28,9 +28,12 @@ import { useWakeWord } from '@/lib/useWakeWord'
 
 let msgCounter = 0
 const uid = () => `msg-${++msgCounter}`
-const SESSION_ID = typeof crypto !== 'undefined'
-  ? crypto.randomUUID()
-  : `session-${Date.now()}`
+// crypto.randomUUID n'existe qu'en contexte sécurisé (HTTPS/localhost).
+// Sur LAN HTTP (ex. http://ip-unraid:1200) il est absent → fallback maison.
+const SESSION_ID =
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `session-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
 export default function Home() {
   const [messages, setMessages]     = useState<Message[]>([])
