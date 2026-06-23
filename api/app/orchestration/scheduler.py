@@ -72,7 +72,12 @@ def list_capabilities() -> list[dict[str, Any]]:
 
 
 def resolve_chat_hint(message: str) -> str:
-    """Retourne 'xl' (RunPod), 'deep' ou 'fast' selon les mots-clés du message."""
+    """Retourne 'xl' (RunPod), 'deep', 'local' (CPU Unraid) ou 'fast'.
+
+    Priorité aux mots-clés lourds (xl/deep → GPU Kubuntu/RunPod). Sinon, si le
+    palier local CPU est activé et que la requête est courte/simple, on reste sur
+    Unraid (`local`) pour NE PAS réveiller Kubuntu.
+    """
     from app.config import settings
     data = _load()
     policy = data.get("chat_policy", {})
@@ -84,6 +89,11 @@ def resolve_chat_hint(message: str) -> str:
             return "xl"
     if any(t in msg_lower for t in policy.get("deep_triggers", [])):
         return "deep"
+    # Palier local CPU : commandes simples (courtes) → Unraid, sans WoL.
+    if (settings.local_cpu_enabled
+            and get_capability("chat.local")
+            and len(message) <= settings.chat_local_max_chars):
+        return "local"
     return policy.get("default", "fast")
 
 
@@ -109,6 +119,21 @@ async def dispatch(capability: str) -> dict[str, Any]:
         return {"ok": True, "machine": machine, "backend": cap.get("backend"),
                 "model": cap.get("model"), "gpu": gpu, "vram_gb": cap.get("vram_gb"),
                 "base_url": res["base_url"], "workflow": cap.get("workflow")}
+
+    # ── Palier LOCAL : backends CPU sur Unraid (pas de WoL, pas de GPU) ──────
+    if machine == "unraid":
+        from app.config import settings
+        base_url = None
+        backend = cap.get("backend")
+        if backend == "ollama":
+            base_url = settings.ollama_local_url or None
+        elif backend in ("faster-whisper", "whisper"):
+            base_url = settings.whisper_local_url or None
+        return {
+            "ok": True, "machine": machine, "backend": backend,
+            "model": cap.get("model"), "gpu": gpu, "vram_gb": cap.get("vram_gb"),
+            "base_url": base_url, "workflow": cap.get("workflow"),
+        }
 
     if machine == "kubuntu" and gpu:
         alive = await is_kubuntu_alive()

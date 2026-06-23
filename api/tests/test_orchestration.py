@@ -22,13 +22,26 @@ def test_get_capability_tts_no_gpu():
     assert cap["gpu"] is False
 
 
-def test_resolve_chat_hint_fast():
-    assert resolve_chat_hint("dis-moi bonjour") == "fast"
+def test_resolve_chat_hint_local_when_enabled():
+    """Message court + palier local CPU activé → 'local' (pas de réveil Kubuntu)."""
+    from app.config import settings
+    with patch.object(settings, "local_cpu_enabled", True):
+        assert resolve_chat_hint("dis-moi bonjour") == "local"
+
+
+def test_resolve_chat_hint_fast_when_local_disabled():
+    """Sans palier local, un message simple retombe sur 'fast' (Kubuntu)."""
+    from app.config import settings
+    with patch.object(settings, "local_cpu_enabled", False):
+        assert resolve_chat_hint("dis-moi bonjour") == "fast"
 
 
 def test_resolve_chat_hint_deep():
-    for phrase in ["analyse ce texte", "fais une stratégie", "écris du code"]:
-        assert resolve_chat_hint(phrase) == "deep", f"'{phrase}' devrait être deep"
+    """Les déclencheurs lourds priment sur le palier local (→ GPU Kubuntu)."""
+    from app.config import settings
+    with patch.object(settings, "local_cpu_enabled", True):
+        for phrase in ["analyse ce texte", "fais une stratégie", "écris du code"]:
+            assert resolve_chat_hint(phrase) == "deep", f"'{phrase}' devrait être deep"
 
 
 async def test_dispatch_tts_no_wol():

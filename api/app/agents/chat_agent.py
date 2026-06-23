@@ -55,6 +55,27 @@ class ChatAgent(Agent):
         capability = f"chat.{hint}"
 
         disp = await dispatch(capability)
+        # Repli : si le LLM CPU local d'Unraid est injoignable, bascule sur Kubuntu.
+        if hint == "local":
+            answer_local = None
+            if disp.get("ok"):
+                answer_local = await chat(
+                    self._build_messages(req), model=disp.get("model"),
+                    base_url=disp.get("base_url"))
+            if answer_local:
+                return AgentResponse(
+                    request_id=req.request_id, agent="chat",
+                    status=AgentStatus.ok, content=answer_local,
+                    tool_calls=[ToolCall(
+                        tool="llm.chat",
+                        args={"capability": capability, "model": disp.get("model"),
+                              "machine": "unraid"},
+                        result=ToolResult(ok=True),
+                    )],
+                )
+            # Local indisponible → on réveille Kubuntu (palier fast)
+            capability = "chat.fast"
+            disp = await dispatch(capability)
         if not disp.get("ok"):
             return AgentResponse(
                 request_id=req.request_id, agent="chat",

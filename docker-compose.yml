@@ -85,10 +85,37 @@ services:
     networks:
       - jarvis
 
+  # ─── Palier LOCAL Unraid (CPU) : parler à JARVIS sans réveiller Kubuntu ───
+  # Petit LLM CPU pour les commandes simples. Après le 1er démarrage, charge le
+  # modèle :  docker exec ollama-cpu ollama pull qwen2.5:3b
+  ollama-cpu:
+    image: ollama/ollama:latest
+    container_name: ollama-cpu
+    restart: unless-stopped
+    volumes:
+      - ollama_cpu_data:/root/.ollama
+    networks:
+      - jarvis
+
+  # Transcription audio → texte en CPU (modèle « base », léger).
+  whisper-cpu:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: whisper-cpu
+    restart: unless-stopped
+    environment:
+      ASR_ENGINE: faster_whisper
+      ASR_MODEL: base
+    volumes:
+      - whisper_cpu_cache:/root/.cache
+    networks:
+      - jarvis
+
 volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  ollama_cpu_data:
+  whisper_cpu_cache:
 
 networks:
   jarvis:

@@ -17,20 +17,36 @@ MAX_AUDIO_MB = 25
 
 @router.post("/transcribe", dependencies=[Depends(require_api_key)])
 async def transcribe(file: UploadFile = File(...), language: str = "fr"):
-    """Transcrit un enregistrement audio en texte (Whisper sur Kubuntu)."""
-    disp = await dispatch("stt")          # réveille Kubuntu si besoin (GPU)
-    if not disp.get("ok"):
-        raise HTTPException(503, f"STT indisponible : {disp.get('error', 'GPU hors ligne')}")
+    """Transcrit un enregistrement audio en texte.
+
+    Essaie d'abord Whisper CPU sur Unraid (stt.local, sans réveiller Kubuntu),
+    puis retombe sur Whisper GPU Kubuntu (stt) si le local échoue.
+    """
+    from app.config import settings
 
     audio = await file.read()
     if len(audio) > MAX_AUDIO_MB * 1024 * 1024:
         raise HTTPException(413, f"Audio trop volumineux (max {MAX_AUDIO_MB} Mo)")
+    fname = file.filename or "audio.webm"
 
-    text = await whisper.transcribe(audio, filename=file.filename or "audio.webm",
-                                    language=language)
+    # 1) Local CPU Unraid (pas de WoL)
+    if settings.local_cpu_enabled:
+        local = await dispatch("stt.local")
+        if local.get("ok"):
+            text = await whisper.transcribe(audio, filename=fname, language=language,
+                                            base_url=local.get("base_url"))
+            if text is not None:
+                return {"text": text, "source": "unraid-cpu"}
+
+    # 2) Fallback Whisper GPU Kubuntu (réveille Kubuntu si besoin)
+    disp = await dispatch("stt")
+    if not disp.get("ok"):
+        raise HTTPException(503, f"STT indisponible : {disp.get('error', 'GPU hors ligne')}")
+    text = await whisper.transcribe(audio, filename=fname, language=language,
+                                    base_url=disp.get("base_url"))
     if text is None:
         raise HTTPException(502, "Transcription échouée (Whisper injoignable)")
-    return {"text": text}
+    return {"text": text, "source": "kubuntu-gpu"}
 
 
 class SpeakRequest(BaseModel):

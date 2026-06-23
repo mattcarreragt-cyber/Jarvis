@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     whisper_base_url: str = "http://localhost:9000"
     piper_base_url: str = "http://localhost:5000"
 
+    # ─── Palier LOCAL Unraid (CPU) : parler à JARVIS sans réveiller Kubuntu ───
+    # Petit LLM + STT tournant en CPU sur Unraid pour les commandes simples.
+    # Si les conteneurs ne tournent pas, on retombe automatiquement sur Kubuntu.
+    local_cpu_enabled: bool = True
+    ollama_local_url: str = "http://ollama-cpu:11434"    # Ollama CPU sur Unraid
+    whisper_local_url: str = "http://whisper-cpu:9000"   # Whisper CPU sur Unraid
+    chat_local_max_chars: int = 280   # au-delà → on considère la requête "non simple"
+
     # Génération d'images (ComfyUI / SDXL)
     comfyui_checkpoint: str = "sd_xl_base_1.0.safetensors"
     comfyui_steps: int = 25

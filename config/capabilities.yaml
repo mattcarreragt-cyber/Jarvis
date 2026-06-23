@@ -15,6 +15,25 @@ vram_budget_gb: 8
 
 capabilities:
 
+  # ─── Palier 0 : LOCAL Unraid (CPU, toujours allumé, ne réveille PAS Kubuntu) ──
+  # Pour parler à JARVIS et traiter des commandes simples sans le GPU.
+  chat.local:
+    machine: unraid
+    backend: ollama
+    model: qwen2.5:3b          # ~2 Go RAM, tourne en CPU sur Unraid
+    gpu: false
+    vram_gb: 0
+    description: "Petit LLM CPU sur Unraid — commandes simples, sans réveiller Kubuntu"
+
+  stt.local:
+    machine: unraid
+    backend: faster-whisper
+    model: base                # modèle léger CPU, suffisant pour des commandes courtes
+    compute_type: int8
+    gpu: false
+    vram_gb: 0
+    description: "Transcription audio → texte en CPU sur Unraid (commandes courtes)"
+
   chat.fast:
     machine: kubuntu
     backend: ollama

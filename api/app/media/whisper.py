@@ -18,8 +18,8 @@ from app.config import settings
 logger = logging.getLogger("jarvis.whisper")
 
 
-def _base() -> str:
-    return settings.whisper_base_url.rstrip("/")
+def _base(override: str | None = None) -> str:
+    return (override or settings.whisper_base_url).rstrip("/")
 
 
 async def health() -> bool:
@@ -32,14 +32,17 @@ async def health() -> bool:
 
 
 async def transcribe(audio: bytes, filename: str = "audio.webm",
-                     language: str = "fr") -> str | None:
-    """Transcrit un fichier audio en texte. None si Whisper injoignable."""
+                     language: str = "fr", base_url: str | None = None) -> str | None:
+    """Transcrit un fichier audio en texte. None si Whisper injoignable.
+
+    base_url : surcharge l'endpoint (ex. Whisper CPU sur Unraid). None = défaut.
+    """
     if not audio:
         return None
     try:
         async with httpx.AsyncClient(timeout=120) as client:
             r = await client.post(
-                f"{_base()}/asr",
+                f"{_base(base_url)}/asr",
                 params={"task": "transcribe", "language": language, "output": "txt"},
                 files={"audio_file": (filename, audio, "application/octet-stream")},
             )
