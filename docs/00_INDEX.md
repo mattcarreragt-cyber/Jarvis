@@ -10,6 +10,7 @@
 - **CYBERSECURITE.md** — module d'audit défensif (SSH, nmap, lynis, CVE, scoring)
 - **BUREAU_DISTANT_VPN.md** — Moonlight/Sunshine + WoL, VPN Mullvad, note Tuta Mail
 - **MOBILE_ANDROID.md** — PWA / APK Capacitor, wake word « Hey Jarvis », accès mobile
+- **TAILSCALE_HTTPS.md** — accès sécurisé partout via Tailscale Serve (HTTPS + micro)
 
 ## 🚀 Guides d'installation détaillés (par machine)
 - **UNRAID_SETUP.md** — le cœur (interface + base de données + mémoire)

@@ -7,7 +7,10 @@ services:
     build:
       context: ./dashboard
       args:
-        NEXT_PUBLIC_API_URL: http://${HOST_IP:-localhost}:4500
+        # Par défaut : API en HTTP sur le LAN. Pour un accès Tailscale HTTPS
+        # (micro/voix), définis API_PUBLIC_URL dans .env, ex. :
+        #   API_PUBLIC_URL=https://tower.tail248307.ts.net:8443
+        NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL:-http://${HOST_IP:-localhost}:4500}
         NEXT_PUBLIC_API_KEY: ${API_KEY:-}
     restart: unless-stopped
     ports:
