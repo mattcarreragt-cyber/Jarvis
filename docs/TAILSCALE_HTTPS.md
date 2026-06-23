@@ -35,14 +35,16 @@ On expose **deux** services HTTPS sur le même nom d'hôte, sur deux ports :
 
 | URL Tailscale | → cible locale | Service |
 |---|---|---|
-| `https://tower.tail248307.ts.net` (443) | `127.0.0.1:1200` | Dashboard |
+| `https://tower.tail248307.ts.net:8080` | `127.0.0.1:1200` | Dashboard |
 | `https://tower.tail248307.ts.net:8443` | `127.0.0.1:4500` | API |
 
-```bash
-# Dashboard sur le port HTTPS standard 443
-tailscale serve --bg --https=443 http://127.0.0.1:1200
+> ⚠️ Le port **443 est réservé à l'interface web native Unraid** — ne pas y toucher.
 
-# API sur le port HTTPS 8443 (même certificat, même nom d'hôte)
+```bash
+# Dashboard HTTPS sur 8080
+tailscale serve --bg --https=8080 http://127.0.0.1:1200
+
+# API HTTPS sur 8443 (même certificat, même nom d'hôte)
 tailscale serve --bg --https=8443 http://127.0.0.1:4500
 
 # Vérifie
@@ -82,7 +84,7 @@ docker compose up -d --build dashboard
 ## 5. Utilisation
 
 - Depuis **n'importe quel appareil de ton tailnet** (téléphone, PC, en 4G/5G) :
-  ouvre **`https://tower.tail248307.ts.net`**.
+  ouvre **`https://tower.tail248307.ts.net:8080`**.
 - Cadenas vert ✅ → *secure context* → le bouton 👂 micro / « Hey Jarvis » et la
   dictée vocale fonctionnent.
 - Aucun port ouvert sur la box, aucun reverse-proxy à maintenir.
