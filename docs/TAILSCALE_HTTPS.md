@@ -35,14 +35,15 @@ On expose **deux** services HTTPS sur le même nom d'hôte, sur deux ports :
 
 | URL Tailscale | → cible locale | Service |
 |---|---|---|
-| `https://tower.tail248307.ts.net:8080` | `127.0.0.1:1200` | Dashboard |
+| `https://tower.tail248307.ts.net:9999` | `127.0.0.1:1200` | Dashboard |
 | `https://tower.tail248307.ts.net:8443` | `127.0.0.1:4500` | API |
 
 > ⚠️ Le port **443 est réservé à l'interface web native Unraid** — ne pas y toucher.
+> (8080 est déjà pris par Immich → on utilise 9999 pour le dashboard.)
 
 ```bash
-# Dashboard HTTPS sur 8080
-tailscale serve --bg --https=8080 http://127.0.0.1:1200
+# Dashboard HTTPS sur 9999
+tailscale serve --bg --https=9999 http://127.0.0.1:1200
 
 # API HTTPS sur 8443 (même certificat, même nom d'hôte)
 tailscale serve --bg --https=8443 http://127.0.0.1:4500
@@ -56,7 +57,7 @@ tailscale serve status
 > par le plugin. Le sous-commande est identique : `tailscale serve ...`.
 
 Le **même certificat** `tower.tail248307.ts.net` couvre tous les ports → pas
-d'erreur TLS, et la page (443) peut appeler l'API (8443) sans *mixed content*.
+d'erreur TLS, et la page (9999) peut appeler l'API (8443) sans *mixed content*.
 
 ---
 
@@ -84,7 +85,7 @@ docker compose up -d --build dashboard
 ## 5. Utilisation
 
 - Depuis **n'importe quel appareil de ton tailnet** (téléphone, PC, en 4G/5G) :
-  ouvre **`https://tower.tail248307.ts.net:8080`**.
+  ouvre **`https://tower.tail248307.ts.net:9999`**.
 - Cadenas vert ✅ → *secure context* → le bouton 👂 micro / « Hey Jarvis » et la
   dictée vocale fonctionnent.
 - Aucun port ouvert sur la box, aucun reverse-proxy à maintenir.
@@ -124,7 +125,7 @@ NEXT_PUBLIC_API_URL=https://tower.tail248307.ts.net:8443 ./scripts/build-apk.sh
 ## 8. Revenir en arrière
 
 ```bash
-tailscale serve --https=443 off
+tailscale serve --https=9999 off
 tailscale serve --https=8443 off
 ```
 Et retire `API_PUBLIC_URL` du `.env`, puis rebuild le dashboard.
