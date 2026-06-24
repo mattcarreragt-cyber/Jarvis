@@ -1,31 +1,143 @@
-# Alias Home Assistant — « phrases de compréhension » pour JARVIS
+# Alias Home Assistant — adapté aux entités réelles de la maison
 # ───────────────────────────────────────────────────────────────────────────
-# Déclare ici les noms que TU utilises à l'oral/écrit → l'entité (ou les
-# entités) Home Assistant correspondantes. JARVIS comprendra alors des phrases
-# comme « allume les luminaires du salon » ou « éteins la télé ».
-#
 # Format :
 #   "phrase telle que tu la dis": entity_id            (une seule entité)
 #   "autre phrase": [entity_id_1, entity_id_2, ...]     (plusieurs entités)
 #
 # - La casse et les accents n'ont pas d'importance.
-# - La correspondance est « tous les mots de la phrase présents dans ta demande ».
-#   Ex. l'alias "luminaires salon" matche « allume les LUMINAIRES du SALON stp ».
-# - Trouve les entity_id réels dans HA : Outils de développement → États,
-#   ou demande à JARVIS « liste les lumières ».
-#
-# Ce fichier est rechargé à chaud (pas besoin de redémarrer l'API).
+# - L'alias matche si TOUS ses mots sont présents dans ta phrase.
+#   Ex. "volet chambre" matche « ferme le VOLET de la CHAMBRE stp ».
+# - Ce fichier est rechargé à chaud (pas besoin de redémarrer l'API).
 
 aliases:
-  # ─── Exemples — remplace par TES entités réelles ───
-  # "luminaires salon": [light.salon_principal, light.salon_lampadaire]
-  # "lumière cuisine": light.cuisine
-  # "télé": media_player.tv_salon
-  # "volet chambre": cover.volet_chambre
-  # "chauffage": climate.thermostat_salon
-  # "prise bureau": switch.prise_bureau
 
-# Domaines considérés pour la reconnaissance automatique par nom convivial
+  # ─── LUMIÈRES ──────────────────────────────────────────────────────────────
+
+  # Salon (groupe + sous-entités)
+  "lumières salon":    [light.salon, light.luminaire_salon, light.centrale_salon]
+  "luminaires salon":  [light.salon, light.luminaire_salon, light.centrale_salon]
+  "lumière salon":     light.salon
+  "salon lumière":     light.salon
+  "centrale salon":    light.centrale_salon
+  "lumière centrale":  light.centrale_salon
+  "luminaire salon":   light.luminaire_salon
+  "lampe salon":       light.luminaire_salon
+
+  # Séjour
+  "lumière séjour":    [light.sejour, light.hue_essential_lamp_1]
+  "lumières séjour":   [light.sejour, light.hue_essential_lamp_1]
+  "luminaire séjour":  light.hue_essential_lamp_1
+  "lampe séjour":      light.hue_essential_lamp_1
+  "hue":               light.hue_essential_lamp_1
+  "lampe hue":         light.hue_essential_lamp_1
+
+  # Chambre
+  "lumière chambre":   light.chambre
+  "lumières chambre":  light.chambre
+
+  # Tout éteindre / allumer
+  "toutes lumières":   [light.salon, light.luminaire_salon, light.centrale_salon, light.sejour, light.hue_essential_lamp_1, light.chambre]
+  "toutes les lumières": [light.salon, light.luminaire_salon, light.centrale_salon, light.sejour, light.hue_essential_lamp_1, light.chambre]
+  "toutes les lumières maison": [light.salon, light.luminaire_salon, light.centrale_salon, light.sejour, light.hue_essential_lamp_1, light.chambre]
+
+  # ─── VOLETS ────────────────────────────────────────────────────────────────
+
+  "volet chambre":         cover.chambre
+  "volets chambre":        cover.chambre
+  "volet bureau":          cover.bureau
+  "volets bureau":         cover.bureau
+  "volet cuisine":         cover.cuisine
+  "volets cuisine":        cover.cuisine
+  "volet salle à manger":  cover.salle_a_manger
+  "volet salle manger":    cover.salle_a_manger
+  "volet salle de bain":   cover.salle_de_bain
+  "volet salle bain":      cover.salle_de_bain
+  "volet salon droite":    cover.salon_droite
+  "volet salon gauche":    cover.salon_gauche
+  "volets salon":          [cover.salon_droite, cover.salon_gauche]
+  "volet séjour":          cover.sejour
+  "volets séjour":         cover.sejour
+  "baie vitrée":           cover.baie_vitree
+  "baie vitree":           cover.baie_vitree
+  "baie":                  cover.baie_vitree
+
+  # Tous les volets ensemble
+  "volets maison":         [cover.baie_vitree, cover.bureau, cover.chambre, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain, cover.salon_droite, cover.salon_gauche, cover.sejour]
+  "tous les volets":       [cover.baie_vitree, cover.bureau, cover.chambre, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain, cover.salon_droite, cover.salon_gauche, cover.sejour]
+  "tous volets":           [cover.baie_vitree, cover.bureau, cover.chambre, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain, cover.salon_droite, cover.salon_gauche, cover.sejour]
+
+  # Volets par étage (noms courts pratiques à l'oral)
+  "volets rdc":            [cover.salon_droite, cover.salon_gauche, cover.sejour, cover.baie_vitree, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain]
+  "volets bas":            [cover.salon_droite, cover.salon_gauche, cover.sejour, cover.baie_vitree, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain]
+  "volets étage":          [cover.chambre, cover.bureau]
+  "volets haut":           [cover.chambre, cover.bureau]
+
+  # ─── MULTIMÉDIA & ÉLECTRONIQUE ─────────────────────────────────────────────
+
+  # TV salon (prise Meross P300 → coupure secteur fiable)
+  "télé":                  switch.unnamed_p300_tv_samsung
+  "tele":                  switch.unnamed_p300_tv_samsung
+  "télévision":            switch.unnamed_p300_tv_samsung
+  "tv salon":              switch.unnamed_p300_tv_samsung
+  "tv samsung":            switch.unnamed_p300_tv_samsung
+  "samsung":               switch.unnamed_p300_tv_samsung
+  "grand écran":           switch.unnamed_p300_tv_samsung
+
+  # Barre de son
+  "barre de son":          switch.unnamed_p300_barre_de_son
+  "son":                   switch.unnamed_p300_barre_de_son
+  "enceinte":              switch.unnamed_p300_barre_de_son
+  "barre son":             switch.unnamed_p300_barre_de_son
+
+  # PS5 (prise Meross P300)
+  "ps5":                   switch.unnamed_p300_ps5
+  "playstation":           switch.unnamed_p300_ps5
+  "console":               switch.unnamed_p300_ps5
+
+  # Tout l'ensemble home cinéma
+  "home cinéma":           [switch.unnamed_p300_tv_samsung, switch.unnamed_p300_barre_de_son]
+  "home cinema":           [switch.unnamed_p300_tv_samsung, switch.unnamed_p300_barre_de_son]
+
+  # PC Gaming
+  "pc gaming":             switch.pc_gaming
+  "pc":                    switch.pc_gaming
+  "ordinateur":            switch.pc_gaming
+
+  # Shield (Android TV)
+  "shield":                media_player.shield
+  "shield salon":          media_player.shield
+  "shield chambre":        media_player.shield_2
+  "android tv":            media_player.shield
+
+  # TV chambre
+  "tv chambre":            media_player.tv_chambre
+  "télé chambre":          media_player.tv_chambre
+  "télévision chambre":    media_player.tv_chambre
+
+  # Prise chambre (usage générique)
+  "prise chambre":         switch.prise_chambre
+
+  # ─── CLIMATISATION / CHAUFFAGE ─────────────────────────────────────────────
+
+  "clim":                  climate.qlima_p7_p8
+  "climatisation":         climate.qlima_p7_p8
+  "climatiseur":           climate.qlima_p7_p8
+  "pompe à chaleur":       climate.qlima_p7_p8
+  "pompe chaleur":         climate.qlima_p7_p8
+  "chauffage":             climate.qlima_p7_p8
+  "qlima":                 climate.qlima_p7_p8
+  "clim power":            switch.qlima_p7_p8_power
+  "alimentation clim":     switch.qlima_p7_p8_power
+
+  # ─── EAU CHAUDE ────────────────────────────────────────────────────────────
+
+  "eau chaude":            water_heater.eau_chaude
+  "chauffe-eau":           water_heater.eau_chaude
+  "chauffe eau":           water_heater.eau_chaude
+  "ballon eau":            water_heater.eau_chaude
+  "cumulus":               water_heater.eau_chaude
+
+# ─── Domaines reconnus pour la correspondance par nom convivial ──────────────
 # (quand aucun alias ne matche). Ne touche pas sauf besoin.
 controllable_domains:
   - light
@@ -33,5 +145,6 @@ controllable_domains:
   - media_player
   - cover
   - climate
+  - water_heater
   - fan
   - input_boolean
