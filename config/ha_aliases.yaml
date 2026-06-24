@@ -11,37 +11,25 @@
 
 aliases:
 
-  # ─── LUMIÈRES ──────────────────────────────────────────────────────────────
-
-  # Salon (groupe + sous-entités)
-  "lumières salon":    [light.salon, light.luminaire_salon, light.centrale_salon]
-  "luminaires salon":  [light.salon, light.luminaire_salon, light.centrale_salon]
-  "lumière salon":     light.salon
-  "salon lumière":     light.salon
-  "centrale salon":    light.centrale_salon
-  "lumière centrale":  light.centrale_salon
+  # ─── LUMIÈRES (3 ampoules connectées : salon, séjour, chambre) ─────────────
+  "lumière salon":     light.luminaire_salon
+  "lumières salon":    light.luminaire_salon
   "luminaire salon":   light.luminaire_salon
   "lampe salon":       light.luminaire_salon
+  "salon lumière":     light.luminaire_salon
 
-  # Séjour
-  "lumière séjour":    [light.sejour, light.hue_essential_lamp_1]
-  "lumières séjour":   [light.sejour, light.hue_essential_lamp_1]
-  "luminaire séjour":  light.hue_essential_lamp_1
-  "lampe séjour":      light.hue_essential_lamp_1
-  "hue":               light.hue_essential_lamp_1
-  "lampe hue":         light.hue_essential_lamp_1
+  "lumière séjour":    light.sejour
+  "lumières séjour":   light.sejour
+  "lampe séjour":      light.sejour
 
-  # Chambre
   "lumière chambre":   light.chambre
   "lumières chambre":  light.chambre
+  "lampe chambre":     light.chambre
 
-  # Tout éteindre / allumer
-  "toutes lumières":   [light.salon, light.luminaire_salon, light.centrale_salon, light.sejour, light.hue_essential_lamp_1, light.chambre]
-  "toutes les lumières": [light.salon, light.luminaire_salon, light.centrale_salon, light.sejour, light.hue_essential_lamp_1, light.chambre]
-  "toutes les lumières maison": [light.salon, light.luminaire_salon, light.centrale_salon, light.sejour, light.hue_essential_lamp_1, light.chambre]
+  "toutes lumières":     [light.luminaire_salon, light.sejour, light.chambre]
+  "toutes les lumières": [light.luminaire_salon, light.sejour, light.chambre]
 
   # ─── VOLETS ────────────────────────────────────────────────────────────────
-
   "volet chambre":         cover.chambre
   "volets chambre":        cover.chambre
   "volet bureau":          cover.bureau
@@ -66,15 +54,13 @@ aliases:
   "tous les volets":       [cover.baie_vitree, cover.bureau, cover.chambre, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain, cover.salon_droite, cover.salon_gauche, cover.sejour]
   "tous volets":           [cover.baie_vitree, cover.bureau, cover.chambre, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain, cover.salon_droite, cover.salon_gauche, cover.sejour]
 
-  # Volets par étage (noms courts pratiques à l'oral)
+  # Volets par étage
   "volets rdc":            [cover.salon_droite, cover.salon_gauche, cover.sejour, cover.baie_vitree, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain]
   "volets bas":            [cover.salon_droite, cover.salon_gauche, cover.sejour, cover.baie_vitree, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain]
   "volets étage":          [cover.chambre, cover.bureau]
   "volets haut":           [cover.chambre, cover.bureau]
 
-  # ─── MULTIMÉDIA & ÉLECTRONIQUE ─────────────────────────────────────────────
-
-  # TV salon (prise Meross P300 → coupure secteur fiable)
+  # ─── MULTIMÉDIA & ÉLECTRONIQUE (prises connectées Tapo/Meross P300) ────────
   "télé":                  switch.unnamed_p300_tv_samsung
   "tele":                  switch.unnamed_p300_tv_samsung
   "télévision":            switch.unnamed_p300_tv_samsung
@@ -83,18 +69,15 @@ aliases:
   "samsung":               switch.unnamed_p300_tv_samsung
   "grand écran":           switch.unnamed_p300_tv_samsung
 
-  # Barre de son
   "barre de son":          switch.unnamed_p300_barre_de_son
   "son":                   switch.unnamed_p300_barre_de_son
   "enceinte":              switch.unnamed_p300_barre_de_son
   "barre son":             switch.unnamed_p300_barre_de_son
 
-  # PS5 (prise Meross P300)
   "ps5":                   switch.unnamed_p300_ps5
   "playstation":           switch.unnamed_p300_ps5
   "console":               switch.unnamed_p300_ps5
 
-  # Tout l'ensemble home cinéma
   "home cinéma":           [switch.unnamed_p300_tv_samsung, switch.unnamed_p300_barre_de_son]
   "home cinema":           [switch.unnamed_p300_tv_samsung, switch.unnamed_p300_barre_de_son]
 
@@ -114,23 +97,28 @@ aliases:
   "télé chambre":          media_player.tv_chambre
   "télévision chambre":    media_player.tv_chambre
 
-  # Prise chambre (usage générique)
+  # ─── PRISE FOUR (entité nommée prise_chambre mais c'est le four) ───────────
+  "four":                  switch.prise_chambre
+  "prise four":            switch.prise_chambre
+  "cu four":               switch.prise_chambre
   "prise chambre":         switch.prise_chambre
 
-  # ─── CLIMATISATION / CHAUFFAGE ─────────────────────────────────────────────
-
+  # ─── CLIMATISATION (Qlima — clim uniquement) ───────────────────────────────
   "clim":                  climate.qlima_p7_p8
   "climatisation":         climate.qlima_p7_p8
   "climatiseur":           climate.qlima_p7_p8
-  "pompe à chaleur":       climate.qlima_p7_p8
-  "pompe chaleur":         climate.qlima_p7_p8
-  "chauffage":             climate.qlima_p7_p8
   "qlima":                 climate.qlima_p7_p8
   "clim power":            switch.qlima_p7_p8_power
   "alimentation clim":     switch.qlima_p7_p8_power
 
-  # ─── EAU CHAUDE ────────────────────────────────────────────────────────────
+  # ─── CHAUFFAGE (thermostat Netatmo — pompe à chaleur) ──────────────────────
+  "chauffage":             climate.unknown_2935304596
+  "thermostat":            climate.unknown_2935304596
+  "pompe à chaleur":       climate.unknown_2935304596
+  "pompe chaleur":         climate.unknown_2935304596
+  "netatmo":               climate.unknown_2935304596
 
+  # ─── EAU CHAUDE ────────────────────────────────────────────────────────────
   "eau chaude":            water_heater.eau_chaude
   "chauffe-eau":           water_heater.eau_chaude
   "chauffe eau":           water_heater.eau_chaude
