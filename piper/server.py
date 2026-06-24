@@ -29,17 +29,40 @@ app = FastAPI(title="Piper TTS")
 _lock = asyncio.Lock()
 
 
+def _voice_present(voice: str) -> bool:
+    return os.path.exists(os.path.join(DATA_DIR, f"{voice}.onnx"))
+
+
+async def _ensure_voice(voice: str) -> None:
+    """Télécharge la voix dans DATA_DIR si absente (piper-tts ≥1.x)."""
+    if _voice_present(voice):
+        return
+    os.makedirs(DATA_DIR, exist_ok=True)
+    proc = await asyncio.create_subprocess_exec(
+        "python", "-m", "piper.download_voices", voice,
+        cwd=DATA_DIR,                       # télécharge dans le cache monté
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    _, stderr = await proc.communicate()
+    if proc.returncode != 0 or not _voice_present(voice):
+        raise RuntimeError(
+            f"téléchargement de la voix {voice} échoué : "
+            + stderr.decode("utf-8", "replace")[:400]
+        )
+
+
 async def _synthesize(text: str, voice: str) -> bytes:
     text = (text or "").strip()
     if not text:
         return b""
     voice = voice or DEFAULT_VOICE
+    await _ensure_voice(voice)
     out_path = tempfile.mktemp(suffix=".wav", dir="/tmp")
     async with _lock:
         proc = await asyncio.create_subprocess_exec(
             "python", "-m", "piper",
             "--model", voice,
-            "--download-dir", DATA_DIR,
             "--data-dir", DATA_DIR,
             "--output_file", out_path,
             stdin=asyncio.subprocess.PIPE,

@@ -52,6 +52,54 @@ async def test_ha_off_needs_confirmation():
     assert resp.confirmation.tool == "ha.turn_off"
 
 
+async def test_ha_resolve_by_friendly_name():
+    """« allume la lumière du salon » (sans entity_id) → résolu par friendly_name."""
+    from app.contracts import ToolResult
+    with patch("app.agents.ha_tools.get_states", new=AsyncMock(
+        return_value=ToolResult(ok=True, data={"states": _STATES, "total": 3})
+    )), patch("app.agents.ha_tools._load_aliases", return_value={}):
+        agent = HomeAssistantAgent()
+        resp = await agent.handle(AgentRequest(
+            request_id="r4", session_id="s1", intent="home_assistant",
+            message="allume la lumière du salon",
+        ))
+    assert resp.status == AgentStatus.needs_confirmation
+    assert resp.confirmation.tool == "ha.turn_on"
+    assert resp.confirmation.args["entity_id"] == "light.salon"
+
+
+async def test_ha_resolve_by_alias_multi():
+    """Un alias peut viser plusieurs entités à la fois."""
+    from app.contracts import ToolResult
+    aliases = {"aliases": {"luminaires salon": ["light.salon", "light.chambre"]}}
+    with patch("app.agents.ha_tools.get_states", new=AsyncMock(
+        return_value=ToolResult(ok=True, data={"states": _STATES, "total": 3})
+    )), patch("app.agents.ha_tools._load_aliases", return_value=aliases):
+        agent = HomeAssistantAgent()
+        resp = await agent.handle(AgentRequest(
+            request_id="r5", session_id="s1", intent="home_assistant",
+            message="éteins les luminaires du salon",
+        ))
+    assert resp.status == AgentStatus.needs_confirmation
+    assert resp.confirmation.tool == "ha.turn_off"
+    assert resp.confirmation.args["entity_id"] == ["light.salon", "light.chambre"]
+
+
+async def test_ha_resolve_not_found_is_helpful():
+    """Cible introuvable → message d'aide (pas un dump d'entités)."""
+    from app.contracts import ToolResult
+    with patch("app.agents.ha_tools.get_states", new=AsyncMock(
+        return_value=ToolResult(ok=True, data={"states": _STATES, "total": 3})
+    )), patch("app.agents.ha_tools._load_aliases", return_value={}):
+        agent = HomeAssistantAgent()
+        resp = await agent.handle(AgentRequest(
+            request_id="r6", session_id="s1", intent="home_assistant",
+            message="allume le truc inexistant zzz",
+        ))
+    assert resp.status == AgentStatus.ok
+    assert "ha_aliases.yaml" in resp.content
+
+
 def test_router_routes_domotique():
     for phrase in ["état des lumières maison", "allume la lumière salon",
                    "chauffage température"]:

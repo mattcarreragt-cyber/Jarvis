@@ -1,0 +1,37 @@
+# Alias Home Assistant — « phrases de compréhension » pour JARVIS
+# ───────────────────────────────────────────────────────────────────────────
+# Déclare ici les noms que TU utilises à l'oral/écrit → l'entité (ou les
+# entités) Home Assistant correspondantes. JARVIS comprendra alors des phrases
+# comme « allume les luminaires du salon » ou « éteins la télé ».
+#
+# Format :
+#   "phrase telle que tu la dis": entity_id            (une seule entité)
+#   "autre phrase": [entity_id_1, entity_id_2, ...]     (plusieurs entités)
+#
+# - La casse et les accents n'ont pas d'importance.
+# - La correspondance est « tous les mots de la phrase présents dans ta demande ».
+#   Ex. l'alias "luminaires salon" matche « allume les LUMINAIRES du SALON stp ».
+# - Trouve les entity_id réels dans HA : Outils de développement → États,
+#   ou demande à JARVIS « liste les lumières ».
+#
+# Ce fichier est rechargé à chaud (pas besoin de redémarrer l'API).
+
+aliases:
+  # ─── Exemples — remplace par TES entités réelles ───
+  # "luminaires salon": [light.salon_principal, light.salon_lampadaire]
+  # "lumière cuisine": light.cuisine
+  # "télé": media_player.tv_salon
+  # "volet chambre": cover.volet_chambre
+  # "chauffage": climate.thermostat_salon
+  # "prise bureau": switch.prise_bureau
+
+# Domaines considérés pour la reconnaissance automatique par nom convivial
+# (quand aucun alias ne matche). Ne touche pas sauf besoin.
+controllable_domains:
+  - light
+  - switch
+  - media_player
+  - cover
+  - climate
+  - fan
+  - input_boolean

@@ -8,13 +8,122 @@ Token : HA_TOKEN (long-lived access token, Profil HA → Sécurité).
 from __future__ import annotations
 
 import logging
+import os
+import re
+import unicodedata
+from pathlib import Path
 
 import httpx
+import yaml
 
 from app.config import settings
 from app.contracts import SideEffect, ToolResult, ToolSpec
 
 logger = logging.getLogger("jarvis.ha")
+
+# ─── Résolution langage naturel → entités HA (alias + nom convivial) ─────────
+
+# Mots d'action / de remplissage retirés avant d'identifier la cible.
+_ACTION_WORDS = {
+    "allume", "allumer", "allumes", "allumé", "allumée", "allumés", "allumées",
+    "active", "activer", "actives", "ouvre", "ouvrir", "ouvres", "démarre", "demarre",
+    "lance", "lancer", "mets", "met", "mettre", "marche", "on",
+    "éteins", "eteins", "éteindre", "eteindre", "éteint", "eteint", "coupe", "couper",
+    "ferme", "fermer", "fermes", "arrête", "arrete", "arrêter", "stop", "off", "arret", "arrêt",
+    "turn", "switch",
+}
+_FILLER_WORDS = {
+    "la", "le", "les", "l", "du", "de", "des", "d", "un", "une", "au", "aux",
+    "mon", "ma", "mes", "ce", "cet", "cette", "ces", "dans", "et",
+    "stp", "svp", "jarvis", "veux", "peux", "tu", "je", "s", "il", "te", "plait", "plaît",
+}
+
+_ALIAS_CANDIDATES = [
+    os.getenv("HA_ALIASES_PATH"),
+    "/app/config/ha_aliases.yaml",
+    str(Path(__file__).resolve().parent.parent.parent.parent / "config" / "ha_aliases.yaml"),
+]
+
+
+def _norm(s: str) -> str:
+    s = unicodedata.normalize("NFD", (s or "").lower())
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z0-9 ]", " ", s)
+
+
+def _tokens(s: str) -> list[str]:
+    return [t for t in _norm(s).split() if t]
+
+
+def _load_aliases() -> dict:
+    for cand in _ALIAS_CANDIDATES:
+        if cand and Path(cand).is_file():
+            try:
+                with open(cand) as f:
+                    return yaml.safe_load(f) or {}
+            except Exception as e:
+                logger.warning("ha_aliases.yaml illisible: %s", e)
+            break
+    return {}
+
+
+def _target_tokens(message: str) -> list[str]:
+    """Tokens de la cible : message moins les mots d'action et de remplissage."""
+    return [t for t in _tokens(message)
+            if t not in _ACTION_WORDS and t not in _FILLER_WORDS]
+
+
+async def resolve_entities(message: str) -> tuple[list[str], str]:
+    """Traduit une demande en langage naturel en liste d'entity_id.
+
+    1) Alias déclarés dans config/ha_aliases.yaml (prioritaires).
+    2) Sinon, correspondance par nom convivial (friendly_name) des entités HA
+       des domaines contrôlables.
+    Retourne (entity_ids, label_lisible). Liste vide si rien trouvé.
+    """
+    cfg = _load_aliases()
+    msg_tokens = set(_tokens(message))
+
+    # 1) Alias : tous les mots de l'alias présents dans le message.
+    best_alias, best_len = None, 0
+    for phrase, ents in (cfg.get("aliases") or {}).items():
+        atoks = set(_tokens(phrase))
+        if atoks and atoks <= msg_tokens and len(atoks) > best_len:
+            best_alias, best_len = (phrase, ents), len(atoks)
+    if best_alias:
+        phrase, ents = best_alias
+        ids = ents if isinstance(ents, list) else [ents]
+        return [str(e) for e in ids], phrase
+
+    # 2) Nom convivial : on cherche les entités dont le friendly_name partage
+    #    le plus de mots avec la cible.
+    target = _target_tokens(message)
+    if not target:
+        return [], ""
+    domains = cfg.get("controllable_domains") or [
+        "light", "switch", "media_player", "cover", "climate", "fan", "input_boolean",
+    ]
+    res = await get_states(limit=0)
+    if not res.ok:
+        return [], ""
+
+    scored: list[tuple[int, str, str]] = []
+    for s in res.data.get("states", []):
+        eid = s["entity_id"]
+        if eid.split(".")[0] not in domains:
+            continue
+        name_tokens = set(_tokens(s.get("friendly_name") or eid))
+        score = sum(1 for t in target if t in name_tokens)
+        if score:
+            scored.append((score, eid, s.get("friendly_name") or eid))
+    if not scored:
+        return [], ""
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[0][0]
+    winners = [(eid, name) for sc, eid, name in scored if sc == top]
+    ids = [eid for eid, _ in winners]
+    label = winners[0][1] if len(winners) == 1 else " + ".join(n for _, n in winners[:4])
+    return ids, label
 
 
 def _headers() -> dict:
@@ -28,8 +137,8 @@ def _base() -> str:
     return settings.ha_url.rstrip("/")
 
 
-async def get_states(domain: str | None = None) -> ToolResult:
-    """Retourne tous les états HA, filtrés par domaine si fourni."""
+async def get_states(domain: str | None = None, limit: int = 50) -> ToolResult:
+    """Retourne les états HA, filtrés par domaine si fourni (limit=0 → tous)."""
     if not settings.ha_token:
         return ToolResult(ok=False, error="HA_TOKEN non configuré")
     try:
@@ -39,6 +148,7 @@ async def get_states(domain: str | None = None) -> ToolResult:
         states = r.json()
         if domain:
             states = [s for s in states if s["entity_id"].startswith(f"{domain}.")]
+        sliced = states if limit <= 0 else states[:limit]
         # On garde les champs essentiels pour ne pas surcharger le contexte
         slim = [
             {
@@ -46,7 +156,7 @@ async def get_states(domain: str | None = None) -> ToolResult:
                 "state": s["state"],
                 "friendly_name": s.get("attributes", {}).get("friendly_name"),
             }
-            for s in states[:50]
+            for s in sliced
         ]
         return ToolResult(ok=True, data={"states": slim, "total": len(states)})
     except httpx.ConnectError:

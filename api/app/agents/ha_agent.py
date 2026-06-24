@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from app.agents.base import Agent
-from app.agents.ha_tools import SPECS, get_entity, get_states, turn_off, turn_on
+from app.agents.ha_tools import SPECS, get_entity, get_states, resolve_entities, turn_off, turn_on
 from app.contracts import (
     AgentRequest,
     AgentResponse,
@@ -20,10 +20,11 @@ from app.contracts import (
     ToolResult,
 )
 
-# Patterns d'action write détectés en langage naturel
-_ON_PAT  = re.compile(r"\b(allume|active|ouvre|démarre|lance|turn.?on)\b",  re.I)
-_OFF_PAT = re.compile(r"\b(éteins?|éteindre|coupe|ferme|arrête|turn.?off)\b", re.I)
-_ENT_PAT = re.compile(r"\b(light|switch|sensor|climate|cover|media_player|input_boolean)\.\w+", re.I)
+# Patterns d'action write détectés en langage naturel (inclut « on »/« off » seuls)
+_ON_PAT  = re.compile(r"\b(allume\w*|active\w*|ouvre|démarre|demarre|lance|mets?\s+en\s+marche|turn\s*on|\bon\b)\b", re.I)
+_OFF_PAT = re.compile(r"\b(éteins?\w*|eteins?\w*|éteindre|eteindre|coupe\w*|ferme\w*|arrête\w*|arrete\w*|turn\s*off|\boff\b)\b", re.I)
+# entity_id explicite (ex. light.salon) — chemin direct sans résolution
+_ENT_PAT = re.compile(r"\b(light|switch|sensor|climate|cover|media_player|input_boolean|fan)\.\w+", re.I)
 
 
 class HomeAssistantAgent(Agent):
@@ -48,24 +49,49 @@ class HomeAssistantAgent(Agent):
         msg = request.message
 
         # ── Détection d'une action write ──────────────────────────────────
-        is_on  = bool(_ON_PAT.search(msg))
         is_off = bool(_OFF_PAT.search(msg))
+        is_on  = bool(_ON_PAT.search(msg)) and not is_off   # « off » prime sur « on »
         entity_match = _ENT_PAT.search(msg)
 
-        if (is_on or is_off) and entity_match:
-            entity_id = entity_match.group(0).lower()
-            action    = "turn_on" if is_on else "turn_off"
-            label     = "allumer" if is_on else "éteindre"
+        if is_on or is_off:
+            action = "turn_on" if is_on else "turn_off"
+            label  = "allumer" if is_on else "éteindre"
+
+            # a) entity_id explicite fourni → chemin direct
+            if entity_match:
+                entity_ids = [entity_match.group(0).lower()]
+                target = entity_ids[0]
+            # b) sinon, on résout le nom parlé via alias + friendly_name
+            else:
+                entity_ids, target = await resolve_entities(msg)
+
+            if not entity_ids:
+                return AgentResponse(
+                    request_id=request.request_id,
+                    agent="home_assistant",
+                    status=AgentStatus.ok,
+                    content=(
+                        "Je n'ai pas trouvé à quelle entité tu fais référence. "
+                        "Tu peux :\n"
+                        "- préciser le nom exact (ex. « allume light.salon »),\n"
+                        "- ou déclarer un alias dans `config/ha_aliases.yaml` "
+                        "(ex. `\"luminaires salon\": [light.salon_1, light.salon_2]`).\n\n"
+                        "_Astuce : demande « liste les lumières » pour voir les noms réels._"
+                    ),
+                )
+
+            shown = ", ".join(f"`{e}`" for e in entity_ids[:6])
+            extra = f" (+{len(entity_ids) - 6})" if len(entity_ids) > 6 else ""
             return AgentResponse(
                 request_id=request.request_id,
                 agent="home_assistant",
                 status=AgentStatus.needs_confirmation,
-                content=f"Je vais **{label}** `{entity_id}`. Confirme ?",
+                content=f"Je vais **{label}** {target} → {shown}{extra}. Confirme ?",
                 confirmation=ConfirmationRequest(
                     request_id=request.request_id,
                     tool=f"ha.{action}",
-                    args={"entity_id": entity_id},
-                    summary=f"{label.capitalize()} {entity_id}",
+                    args={"entity_id": entity_ids if len(entity_ids) > 1 else entity_ids[0]},
+                    summary=f"{label.capitalize()} {target}",
                 ),
             )
 
