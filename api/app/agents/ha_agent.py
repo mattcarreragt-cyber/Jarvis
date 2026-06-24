@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from app.agents.base import Agent
-from app.agents.ha_tools import SPECS, get_entity, get_states, resolve_entities, turn_off, turn_on
+from app.agents.ha_tools import SPECS, get_entity, get_states, resolve_entities, set_temperature, turn_off, turn_on
 from app.contracts import (
     AgentRequest,
     AgentResponse,
@@ -21,10 +21,14 @@ from app.contracts import (
 )
 
 # Patterns d'action write détectés en langage naturel (inclut « on »/« off » seuls)
-_ON_PAT  = re.compile(r"\b(allume\w*|active\w*|ouvre|démarre|demarre|lance|mets?\s+en\s+marche|turn\s*on|\bon\b)\b", re.I)
-_OFF_PAT = re.compile(r"\b(éteins?\w*|eteins?\w*|éteindre|eteindre|coupe\w*|ferme\w*|arrête\w*|arrete\w*|turn\s*off|\boff\b)\b", re.I)
+_ON_PAT   = re.compile(r"\b(allume\w*|active\w*|ouvre|démarre|demarre|lance|mets?\s+en\s+marche|turn\s*on|\bon\b)\b", re.I)
+_OFF_PAT  = re.compile(r"\b(éteins?\w*|eteins?\w*|éteindre|eteindre|coupe\w*|ferme\w*|arrête\w*|arrete\w*|turn\s*off|\boff\b)\b", re.I)
 # entity_id explicite (ex. light.salon) — chemin direct sans résolution
-_ENT_PAT = re.compile(r"\b(light|switch|sensor|climate|cover|media_player|input_boolean|fan)\.\w+", re.I)
+_ENT_PAT  = re.compile(r"\b(light|switch|sensor|climate|cover|media_player|input_boolean|fan)\.\w+", re.I)
+# Consigne de température : « à 20 degrés », « 21° », « 20.5 °C », « régle à 19 »
+_TEMP_PAT = re.compile(r"\b(\d{1,2}(?:[.,]\d)?)\s*(?:°\s*[cC]?|degr[eé]s?|degrés?)\b|\bà\s+(\d{1,2}(?:[.,]\d)?)\b", re.I)
+# Mots qui déclenchent une consigne de température
+_TEMP_VERBS = re.compile(r"\b(règle\w*|regle\w*|mets?\s+à|mettre\s+à|règle\w*|fixe\w*|consigne|chauffe\s+à|clim\s+à|température\s+à)\b", re.I)
 
 
 class HomeAssistantAgent(Agent):
@@ -47,6 +51,48 @@ class HomeAssistantAgent(Agent):
 
     async def handle(self, request: AgentRequest) -> AgentResponse:
         msg = request.message
+
+        # ── Détection consigne de température ────────────────────────────
+        temp_match = _TEMP_PAT.search(msg)
+        if temp_match and _TEMP_VERBS.search(msg):
+            raw = (temp_match.group(1) or temp_match.group(2) or "").replace(",", ".")
+            try:
+                temperature = float(raw)
+            except ValueError:
+                temperature = None
+            if temperature is not None and 5 <= temperature <= 35:
+                entity_match = _ENT_PAT.search(msg)
+                if entity_match:
+                    entity_ids = [entity_match.group(0).lower()]
+                    target = entity_ids[0]
+                else:
+                    entity_ids, target = await resolve_entities(msg)
+                # Si aucune entité climate trouvée, propose le thermostat par défaut
+                climate_ids = [e for e in entity_ids if e.startswith("climate.")]
+                if not climate_ids and not entity_ids:
+                    return AgentResponse(
+                        request_id=request.request_id,
+                        agent="home_assistant",
+                        status=AgentStatus.ok,
+                        content=(
+                            f"Je n'ai pas trouvé à quel thermostat appliquer {temperature}°C. "
+                            "Précise : « règle le chauffage à 20° » ou « règle la clim à 22° »."
+                        ),
+                    )
+                target_ids = climate_ids or entity_ids
+                shown = ", ".join(f"`{e}`" for e in target_ids)
+                return AgentResponse(
+                    request_id=request.request_id,
+                    agent="home_assistant",
+                    status=AgentStatus.needs_confirmation,
+                    content=f"Je vais régler **{target}** à **{temperature}°C** → {shown}. Confirme ?",
+                    confirmation=ConfirmationRequest(
+                        request_id=request.request_id,
+                        tool="ha.set_temperature",
+                        args={"entity_id": target_ids[0] if len(target_ids) == 1 else target_ids, "temperature": temperature},
+                        summary=f"Consigne {temperature}°C sur {target}",
+                    ),
+                )
 
         # ── Détection d'une action write ──────────────────────────────────
         is_off = bool(_OFF_PAT.search(msg))

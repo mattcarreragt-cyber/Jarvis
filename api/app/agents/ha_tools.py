@@ -196,6 +196,12 @@ async def turn_off(entity_id: str) -> ToolResult:
     return await _call_service("homeassistant", "turn_off", {"entity_id": entity_id})
 
 
+async def set_temperature(entity_id: str, temperature: float) -> ToolResult:
+    """Règle la consigne de température d'un climate (chauffage/clim)."""
+    return await _call_service("climate", "set_temperature",
+                               {"entity_id": entity_id, "temperature": temperature})
+
+
 async def call_service(domain: str, service: str, data: dict) -> ToolResult:
     """Appelle un service HA arbitraire."""
     return await _call_service(domain, service, data)
@@ -220,11 +226,12 @@ async def _call_service(domain: str, service: str, data: dict) -> ToolResult:
 
 
 HANDLERS = {
-    "ha.get_states":    lambda: get_states(),      # async — appelé avec await par l'agent
-    "ha.get_entity":    get_entity,
-    "ha.turn_on":       turn_on,
-    "ha.turn_off":      turn_off,
-    "ha.call_service":  call_service,
+    "ha.get_states":       lambda: get_states(),
+    "ha.get_entity":       get_entity,
+    "ha.turn_on":          turn_on,
+    "ha.turn_off":         turn_off,
+    "ha.set_temperature":  set_temperature,
+    "ha.call_service":     call_service,
 }
 
 SPECS = [
@@ -238,6 +245,9 @@ SPECS = [
              required_permissions=["ha:write"], side_effects=SideEffect.write),
     ToolSpec(name="ha.turn_off",     description="Éteint une entité",
              parameters={"entity_id": {"type": "string"}},
+             required_permissions=["ha:write"], side_effects=SideEffect.write),
+    ToolSpec(name="ha.set_temperature", description="Règle la consigne de température d'un thermostat ou clim",
+             parameters={"entity_id": {"type": "string"}, "temperature": {"type": "number"}},
              required_permissions=["ha:write"], side_effects=SideEffect.write),
     ToolSpec(name="ha.call_service", description="Appelle un service HA arbitraire",
              required_permissions=["ha:write"], side_effects=SideEffect.write),
