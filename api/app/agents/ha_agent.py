@@ -1,8 +1,4 @@
-"""Agent Home Assistant.
-
-Lecture : libre.
-Écriture (turn_on/off) : nécessite confirmation (rule spec — ne pas casser l'existant).
-"""
+"""Agent Home Assistant — exécution directe, sans demande de confirmation."""
 
 from __future__ import annotations
 
@@ -15,20 +11,18 @@ from app.contracts import (
     AgentResponse,
     AgentSpec,
     AgentStatus,
-    ConfirmationRequest,
     ToolCall,
     ToolResult,
 )
 
-# Patterns d'action write détectés en langage naturel (inclut « on »/« off » seuls)
+# Patterns d'action détectés en langage naturel (inclut « on »/« off » seuls)
 _ON_PAT   = re.compile(r"\b(allume\w*|active\w*|ouvre|démarre|demarre|lance|mets?\s+en\s+marche|turn\s*on|\bon\b)\b", re.I)
 _OFF_PAT  = re.compile(r"\b(éteins?\w*|eteins?\w*|éteindre|eteindre|coupe\w*|ferme\w*|arrête\w*|arrete\w*|turn\s*off|\boff\b)\b", re.I)
 # entity_id explicite (ex. light.salon) — chemin direct sans résolution
 _ENT_PAT  = re.compile(r"\b(light|switch|sensor|climate|cover|media_player|input_boolean|fan)\.\w+", re.I)
-# Consigne de température : « à 20 degrés », « 21° », « 20.5 °C », « régle à 19 »
-_TEMP_PAT = re.compile(r"\b(\d{1,2}(?:[.,]\d)?)\s*(?:°\s*[cC]?|degr[eé]s?|degrés?)\b|\bà\s+(\d{1,2}(?:[.,]\d)?)\b", re.I)
-# Mots qui déclenchent une consigne de température
-_TEMP_VERBS = re.compile(r"\b(règle\w*|regle\w*|mets?\s+à|mettre\s+à|règle\w*|fixe\w*|consigne|chauffe\s+à|clim\s+à|température\s+à)\b", re.I)
+# Consigne de température : « à 20 degrés », « 21° », « 20.5 °C »
+_TEMP_PAT   = re.compile(r"\b(\d{1,2}(?:[.,]\d)?)\s*(?:°\s*[cC]?|degr[eé]s?|degrés?)\b|\bà\s+(\d{1,2}(?:[.,]\d)?)\b", re.I)
+_TEMP_VERBS = re.compile(r"\b(règle\w*|regle\w*|mets?\s+à|mettre\s+à|fixe\w*|consigne|chauffe\s+à|clim\s+à|température\s+à)\b", re.I)
 
 
 class HomeAssistantAgent(Agent):
@@ -46,13 +40,13 @@ class HomeAssistantAgent(Agent):
                 "maison", "pièce", "salon", "chambre", "cuisine",
             ],
             tools=SPECS,
-            default_permissions=["ha:read"],
+            default_permissions=["ha:read", "ha:write"],
         )
 
     async def handle(self, request: AgentRequest) -> AgentResponse:
         msg = request.message
 
-        # ── Détection consigne de température ────────────────────────────
+        # ── Consigne de température ───────────────────────────────────────
         temp_match = _TEMP_PAT.search(msg)
         if temp_match and _TEMP_VERBS.search(msg):
             raw = (temp_match.group(1) or temp_match.group(2) or "").replace(",", ".")
@@ -67,7 +61,6 @@ class HomeAssistantAgent(Agent):
                     target = entity_ids[0]
                 else:
                     entity_ids, target = await resolve_entities(msg)
-                # Si aucune entité climate trouvée, propose le thermostat par défaut
                 climate_ids = [e for e in entity_ids if e.startswith("climate.")]
                 if not climate_ids and not entity_ids:
                     return AgentResponse(
@@ -80,34 +73,34 @@ class HomeAssistantAgent(Agent):
                         ),
                     )
                 target_ids = climate_ids or entity_ids
-                shown = ", ".join(f"`{e}`" for e in target_ids)
+                # Exécution directe sur le premier climate trouvé
+                result = await set_temperature(target_ids[0], temperature)
+                if result.ok:
+                    return AgentResponse(
+                        request_id=request.request_id,
+                        agent="home_assistant",
+                        status=AgentStatus.ok,
+                        content=f"✓ Consigne réglée à **{temperature}°C** sur {target}.",
+                    )
                 return AgentResponse(
                     request_id=request.request_id,
                     agent="home_assistant",
-                    status=AgentStatus.needs_confirmation,
-                    content=f"Je vais régler **{target}** à **{temperature}°C** → {shown}. Confirme ?",
-                    confirmation=ConfirmationRequest(
-                        request_id=request.request_id,
-                        tool="ha.set_temperature",
-                        args={"entity_id": target_ids[0] if len(target_ids) == 1 else target_ids, "temperature": temperature},
-                        summary=f"Consigne {temperature}°C sur {target}",
-                    ),
+                    status=AgentStatus.error,
+                    content=f"Erreur lors du réglage : {result.error}",
                 )
 
-        # ── Détection d'une action write ──────────────────────────────────
+        # ── Action allumer / éteindre ─────────────────────────────────────
         is_off = bool(_OFF_PAT.search(msg))
-        is_on  = bool(_ON_PAT.search(msg)) and not is_off   # « off » prime sur « on »
+        is_on  = bool(_ON_PAT.search(msg)) and not is_off
         entity_match = _ENT_PAT.search(msg)
 
         if is_on or is_off:
-            action = "turn_on" if is_on else "turn_off"
-            label  = "allumer" if is_on else "éteindre"
+            fn    = turn_on if is_on else turn_off
+            label = "allumé" if is_on else "éteint"
 
-            # a) entity_id explicite fourni → chemin direct
             if entity_match:
                 entity_ids = [entity_match.group(0).lower()]
                 target = entity_ids[0]
-            # b) sinon, on résout le nom parlé via alias + friendly_name
             else:
                 entity_ids, target = await resolve_entities(msg)
 
@@ -119,30 +112,36 @@ class HomeAssistantAgent(Agent):
                     content=(
                         "Je n'ai pas trouvé à quelle entité tu fais référence. "
                         "Tu peux :\n"
-                        "- préciser le nom exact (ex. « allume light.salon »),\n"
-                        "- ou déclarer un alias dans `config/ha_aliases.yaml` "
-                        "(ex. `\"luminaires salon\": [light.salon_1, light.salon_2]`).\n\n"
+                        "- préciser le nom exact (ex. « allume light.luminaire_salon »),\n"
+                        "- ou déclarer un alias dans `config/ha_aliases.yaml`.\n\n"
                         "_Astuce : demande « liste les lumières » pour voir les noms réels._"
                     ),
                 )
 
+            # Exécution directe sur toutes les entités cibles
+            errors = []
+            for eid in entity_ids:
+                r = await fn(eid)
+                if not r.ok:
+                    errors.append(f"{eid}: {r.error}")
+
             shown = ", ".join(f"`{e}`" for e in entity_ids[:6])
             extra = f" (+{len(entity_ids) - 6})" if len(entity_ids) > 6 else ""
+            if errors:
+                return AgentResponse(
+                    request_id=request.request_id,
+                    agent="home_assistant",
+                    status=AgentStatus.error,
+                    content=f"Erreur partielle sur {target} :\n" + "\n".join(errors),
+                )
             return AgentResponse(
                 request_id=request.request_id,
                 agent="home_assistant",
-                status=AgentStatus.needs_confirmation,
-                content=f"Je vais **{label}** {target} → {shown}{extra}. Confirme ?",
-                confirmation=ConfirmationRequest(
-                    request_id=request.request_id,
-                    tool=f"ha.{action}",
-                    args={"entity_id": entity_ids if len(entity_ids) > 1 else entity_ids[0]},
-                    summary=f"{label.capitalize()} {target}",
-                ),
+                status=AgentStatus.ok,
+                content=f"✓ **{target}** {label} — {shown}{extra}",
             )
 
         # ── Lecture : états ───────────────────────────────────────────────
-        # Détection de domaine
         domain = None
         if any(w in msg.lower() for w in ["lumière", "lumiere", "lampe", "light"]):
             domain = "light"
