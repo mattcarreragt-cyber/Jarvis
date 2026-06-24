@@ -400,17 +400,31 @@ export async function transcribeAudio(blob: Blob): Promise<string> {
   return data.text as string
 }
 
-/** Synthèse vocale (Piper). Retourne une URL d'objet audio jouable, ou null. */
-export async function speak(text: string): Promise<string | null> {
+/** Synthèse vocale (Piper). Retourne une URL d'objet audio jouable, ou null.
+ *  voice : nom de voix Piper (ex. fr_FR-siwis-medium). Vide = voix par défaut. */
+export async function speak(text: string, voice?: string): Promise<string | null> {
   try {
     const r = await apiFetch('/api/voice/speak', {
       method: 'POST',
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(voice ? { text, voice } : { text }),
     })
     if (!r.ok) return null
     const blob = await r.blob()
     return URL.createObjectURL(blob)
   } catch {
     return null
+  }
+}
+
+export interface VoiceOption { id: string; label: string }
+
+/** Liste des voix TTS disponibles + voix par défaut. */
+export async function fetchVoices(): Promise<{ voices: VoiceOption[]; default: string }> {
+  try {
+    const r = await apiFetch('/api/voice/voices')
+    if (!r.ok) return { voices: [], default: '' }
+    return r.json()
+  } catch {
+    return { voices: [], default: '' }
   }
 }

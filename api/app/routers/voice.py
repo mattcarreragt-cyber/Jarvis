@@ -51,13 +51,31 @@ async def transcribe(file: UploadFile = File(...), language: str = "fr"):
 
 class SpeakRequest(BaseModel):
     text: str
+    voice: str | None = None   # ex. fr_FR-siwis-medium ; None = voix par défaut
 
 
 @router.post("/speak", dependencies=[Depends(require_api_key)])
 async def speak(req: SpeakRequest):
     """Synthèse vocale d'un texte (Piper, CPU Unraid). Renvoie un WAV."""
     await dispatch("tts")                 # machine=unraid, gpu=false → pas de WoL
-    audio = await piper.synthesize(req.text)
+    audio = await piper.synthesize(req.text, voice=req.voice)
     if audio is None:
         raise HTTPException(502, "Synthèse vocale indisponible (Piper non configuré)")
     return Response(content=audio, media_type="audio/wav")
+
+
+# Voix françaises Piper proposées dans le dashboard (téléchargées à la demande).
+VOICES = [
+    {"id": "fr_FR-siwis-medium", "label": "Siwis (femme, claire)"},
+    {"id": "fr_FR-tom-medium",   "label": "Tom (homme)"},
+    {"id": "fr_FR-upmc-medium",  "label": "UPMC (femme)"},
+    {"id": "fr_FR-gilles-low",   "label": "Gilles (homme, rapide)"},
+    {"id": "fr_FR-mls-medium",   "label": "MLS (multi-locuteurs)"},
+]
+
+
+@router.get("/voices")
+async def voices():
+    """Liste des voix disponibles + voix par défaut (pour le sélecteur dashboard)."""
+    from app.config import settings
+    return {"voices": VOICES, "default": settings.piper_voice}

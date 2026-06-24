@@ -22,7 +22,7 @@ import CyberPanel from '@/components/CyberPanel'
 import RemotePanel from '@/components/RemotePanel'
 import HaPanel from '@/components/HaPanel'
 import { House } from 'lucide-react'
-import { apiFetch, transcribeAudio, speak, fetchNotifications } from '@/lib/api'
+import { apiFetch, transcribeAudio, speak, fetchNotifications, fetchVoices, VoiceOption } from '@/lib/api'
 import { useVoiceRecorder } from '@/lib/useVoiceRecorder'
 import { useWakeWord } from '@/lib/useWakeWord'
 
@@ -56,6 +56,22 @@ export default function Home() {
   const [showHa, setShowHa]           = useState(false)
   const [unread, setUnread]           = useState(0)
   const [voiceOut, setVoiceOut]       = useState(false)
+  const [voice, setVoice]             = useState('')
+  const [voiceOptions, setVoiceOptions] = useState<VoiceOption[]>([])
+
+  // Charge la liste des voix + la voix mémorisée (localStorage) au montage.
+  useEffect(() => {
+    fetchVoices().then(({ voices, default: def }) => {
+      setVoiceOptions(voices)
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('jarvis-voice') : null
+      setVoice(saved || def || (voices[0]?.id ?? ''))
+    })
+  }, [])
+
+  const onVoiceChange = useCallback((v: string) => {
+    setVoice(v)
+    try { localStorage.setItem('jarvis-voice', v) } catch { /* ignore */ }
+  }, [])
 
   const closePanels = useCallback(() => {
     setShowUpload(false); setShowCloud(false); setShowHistory(false)
@@ -83,9 +99,9 @@ export default function Home() {
     setMessages(prev => [...prev, { ...msg, id: uid() }]), [])
 
   const playTTS = useCallback(async (text: string) => {
-    const url = await speak(text)
+    const url = await speak(text, voice || undefined)
     if (url) { try { await new Audio(url).play() } catch { /* lecture refusée */ } }
-  }, [])
+  }, [voice])
 
   const sendMessage = useCallback(async (text: string) => {
     if (loading) return
@@ -286,6 +302,21 @@ export default function Home() {
             >
               {voiceOut ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </button>
+            {/* Sélecteur de voix (visible quand la lecture vocale est active) */}
+            {voiceOut && voiceOptions.length > 0 && (
+              <select
+                value={voice}
+                onChange={e => onVoiceChange(e.target.value)}
+                title="Voix de JARVIS"
+                className="bg-[rgba(0,212,255,0.06)] border border-[rgba(0,212,255,0.25)]
+                           text-[var(--text-dim)] text-[11px] rounded px-1.5 py-1
+                           focus:outline-none focus:border-[var(--cyan)]"
+              >
+                {voiceOptions.map(v => (
+                  <option key={v.id} value={v.id} className="bg-[#02131a]">{v.label}</option>
+                ))}
+              </select>
+            )}
             {/* Upload doc */}
             <button
               onClick={() => { const n = !showUpload; closePanels(); setShowUpload(n) }}

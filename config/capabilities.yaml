@@ -70,7 +70,7 @@ capabilities:
   tts:
     machine: unraid
     backend: piper
-    model: fr_FR-upmc-medium
+    model: fr_FR-siwis-medium     # voix par défaut ; sélectionnable dans le dashboard
     gpu: false
     vram_gb: 0
     description: "Synthèse vocale texte → audio (CPU Unraid, Kubuntu non requis)"

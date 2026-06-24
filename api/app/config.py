@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     comfyui_base_url: str = "http://localhost:8188"
     whisper_base_url: str = "http://localhost:9000"
     piper_base_url: str = "http://localhost:5000"
+    piper_voice: str = "fr_FR-siwis-medium"   # voix TTS par défaut (surchargée par requête)
 
     # ─── Palier LOCAL Unraid (CPU) : parler à JARVIS sans réveiller Kubuntu ───
     # Petit LLM + STT tournant en CPU sur Unraid pour les commandes simples.

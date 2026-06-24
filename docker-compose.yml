@@ -113,12 +113,27 @@ services:
     networks:
       - jarvis
 
+  # Synthèse vocale (la VOIX de JARVIS) en CPU. Voix par défaut configurable ;
+  # le dashboard peut en choisir une autre par requête. Voix téléchargées à la
+  # demande dans le volume piper_voices.
+  piper:
+    build: ./piper
+    container_name: unraid-piper
+    restart: unless-stopped
+    environment:
+      PIPER_DEFAULT_VOICE: ${PIPER_VOICE:-fr_FR-siwis-medium}
+    volumes:
+      - piper_voices:/data
+    networks:
+      - jarvis
+
 volumes:
   postgres_data:
   redis_data:
   qdrant_data:
   ollama_cpu_data:
   whisper_cpu_cache:
+  piper_voices:
 
 networks:
   jarvis:

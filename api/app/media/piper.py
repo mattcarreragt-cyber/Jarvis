@@ -22,24 +22,28 @@ def _base() -> str:
     return settings.piper_base_url.rstrip("/")
 
 
-async def synthesize(text: str) -> bytes | None:
-    """Synthèse vocale d'un texte → octets WAV. None si indisponible."""
+async def synthesize(text: str, voice: str | None = None) -> bytes | None:
+    """Synthèse vocale d'un texte → octets WAV. None si indisponible.
+
+    voice : nom de la voix Piper (ex. fr_FR-siwis-medium). None = défaut serveur/config.
+    """
     text = (text or "").strip()
     if not text:
         return None
+    voice = voice or settings.piper_voice
 
     base = _base()
-    async with httpx.AsyncClient(timeout=30) as client:
-        # 1) POST JSON {"text": ...}
+    async with httpx.AsyncClient(timeout=60) as client:
+        # 1) POST JSON {"text": ..., "voice": ...}
         try:
-            r = await client.post(base, json={"text": text})
+            r = await client.post(base, json={"text": text, "voice": voice})
             if r.status_code < 400 and r.content:
                 return r.content
         except Exception:
             pass
-        # 2) Repli : GET ?text=...
+        # 2) Repli : GET ?text=...&voice=...
         try:
-            r = await client.get(base, params={"text": text})
+            r = await client.get(base, params={"text": text, "voice": voice})
             if r.status_code < 400 and r.content:
                 return r.content
         except Exception as e:
