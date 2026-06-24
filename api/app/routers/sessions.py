@@ -57,6 +57,20 @@ async def list_sessions(_: str = Depends(require_api_key)):
     ]
 
 
+@router.delete("/{session_id}", status_code=204)
+async def delete_session(session_id: str, _: str = Depends(require_api_key)):
+    """Supprime une conversation (et ses messages via ON DELETE CASCADE)."""
+    pool = await get_pool()
+    if pool is None:
+        raise HTTPException(503, "Base de données indisponible")
+    async with pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM sessions WHERE id = $1", session_id)
+    # asyncpg renvoie "DELETE <n>"
+    if result.split()[-1] == "0":
+        raise HTTPException(404, "Session introuvable")
+    return Response(status_code=204)
+
+
 @router.get("/{session_id}", response_model=list[MessageOut])
 async def get_session(session_id: str, _: str = Depends(require_api_key)):
     pool = await get_pool()

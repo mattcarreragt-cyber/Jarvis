@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, ChevronLeft, MessageSquare, Download, FileJson } from 'lucide-react'
-import { fetchSessions, fetchSession, exportSession, SessionSummary, HistoryMessage } from '@/lib/api'
+import { Clock, ChevronLeft, MessageSquare, Download, FileJson, Trash2 } from 'lucide-react'
+import { fetchSessions, fetchSession, exportSession, deleteSession, SessionSummary, HistoryMessage } from '@/lib/api'
 
 interface Props {
   onRestore: (messages: { role: 'user' | 'assistant'; content: string; agent?: string }[]) => void
@@ -26,6 +26,15 @@ export default function HistoryPanel({ onRestore, onClose }: Props) {
     const msgs = await fetchSession(id)
     setMessages(msgs)
     setLoading(false)
+  }
+
+  const remove = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Supprimer définitivement cette conversation ?')) return
+    const ok = await deleteSession(id)
+    if (!ok) return
+    setSessions(prev => prev.filter(s => s.id !== id))
+    if (selected === id) { setSelected(null); setMessages([]) }
   }
 
   const restore = () => {
@@ -64,21 +73,29 @@ export default function HistoryPanel({ onRestore, onClose }: Props) {
             </p>
           )}
           {sessions.map(s => (
-            <button
+            <div
               key={s.id}
               onClick={() => open(s.id)}
-              className={`w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[rgba(0,212,255,0.05)] ${
+              className={`group relative w-full cursor-pointer px-3 py-2 text-[11px] transition-colors hover:bg-[rgba(0,212,255,0.05)] ${
                 selected === s.id ? 'bg-[rgba(0,212,255,0.08)] text-[var(--cyan)]' : 'text-[var(--text-dim)]'
               }`}
             >
-              <div className="flex items-center gap-1 mb-0.5">
+              <div className="flex items-center gap-1 mb-0.5 pr-5">
                 <MessageSquare size={10} />
                 <span className="font-mono">{s.id.slice(0, 8).toUpperCase()}</span>
               </div>
               <div className="text-[9px] opacity-60">
                 {new Date(s.created_at).toLocaleDateString('fr-FR')} · {s.message_count} msgs
               </div>
-            </button>
+              <button
+                onClick={(e) => remove(s.id, e)}
+                title="Supprimer cette conversation"
+                className="absolute top-1.5 right-1.5 p-1 rounded text-[var(--text-dim)] opacity-0
+                           group-hover:opacity-100 hover:text-red-400 hover:bg-[rgba(255,0,0,0.08)] transition"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
           ))}
         </div>
 

@@ -45,6 +45,12 @@ export async function fetchSession(id: string): Promise<HistoryMessage[]> {
   return r.json()
 }
 
+/** Supprime une conversation de l'historique. */
+export async function deleteSession(id: string): Promise<boolean> {
+  const r = await apiFetch(`/api/sessions/${id}`, { method: 'DELETE' })
+  return r.ok
+}
+
 /** Télécharge l'export d'une conversation (md|json) via le navigateur. */
 export async function exportSession(id: string, format: 'md' | 'json'): Promise<boolean> {
   const r = await apiFetch(`/api/sessions/${id}/export?format=${format}`)
