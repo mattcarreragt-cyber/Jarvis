@@ -62,7 +62,7 @@ Dans le dashboard (`http://IP_UNRAID:3000`), tape dans l'ordre :
 | Message | Attendu |
 |---------|---------|
 | `liste mes lumières` | états HA (lecture) |
-| `allume light.salon` | demande de confirmation → bouton **CONFIRMER** → action |
+| `allume light.salon` | exécution directe → « ✓ light.salon allumé » |
 
 **Nextcloud** — `.env` : `NEXTCLOUD_URL/USER/PASSWORD` + `NEXTCLOUD_SYNC_ENABLED=true`.
 

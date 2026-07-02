@@ -1,11 +1,26 @@
-"""Agent Home Assistant — exécution directe, sans demande de confirmation."""
+"""Agent Home Assistant — exécution directe, sans demande de confirmation.
+
+Garde-fous : les questions (« le four est-il éteint ? ») restent en lecture ;
+seuls les impératifs (« éteins », « allume », « règle à 21° ») déclenchent
+une action. Les participes (« allumée », « éteinte ») et le pronom « on »
+ne comptent pas comme des ordres.
+"""
 
 from __future__ import annotations
 
 import re
 
 from app.agents.base import Agent
-from app.agents.ha_tools import SPECS, get_entity, get_states, resolve_entities, set_temperature, turn_off, turn_on
+from app.agents.ha_tools import (
+    CONTROLLABLE_DOMAINS,
+    SPECS,
+    get_entity,
+    get_states,
+    resolve_entities,
+    set_temperature,
+    turn_off,
+    turn_on,
+)
 from app.contracts import (
     AgentRequest,
     AgentResponse,
@@ -15,14 +30,51 @@ from app.contracts import (
     ToolResult,
 )
 
-# Patterns d'action détectés en langage naturel (inclut « on »/« off » seuls)
-_ON_PAT   = re.compile(r"\b(allume\w*|active\w*|ouvre|démarre|demarre|lance|mets?\s+en\s+marche|turn\s*on|\bon\b)\b", re.I)
-_OFF_PAT  = re.compile(r"\b(éteins?\w*|eteins?\w*|éteindre|eteindre|coupe\w*|ferme\w*|arrête\w*|arrete\w*|turn\s*off|\boff\b)\b", re.I)
-# entity_id explicite (ex. light.salon) — chemin direct sans résolution
-_ENT_PAT  = re.compile(r"\b(light|switch|sensor|climate|cover|media_player|input_boolean|fan)\.\w+", re.I)
-# Consigne de température : « à 20 degrés », « 21° », « 20.5 °C »
-_TEMP_PAT   = re.compile(r"\b(\d{1,2}(?:[.,]\d)?)\s*(?:°\s*[cC]?|degr[eé]s?|degrés?)\b|\bà\s+(\d{1,2}(?:[.,]\d)?)\b", re.I)
-_TEMP_VERBS = re.compile(r"\b(règle\w*|regle\w*|mets?\s+à|mettre\s+à|fixe\w*|consigne|chauffe\s+à|clim\s+à|température\s+à)\b", re.I)
+# Question / interrogation → toujours en lecture, jamais une action.
+_QUESTION_PAT = re.compile(
+    r"\?"
+    r"|^\s*(est[- ]ce|quel(le)?s?|qui|combien|pourquoi|comment|quand|o[uù])\b"
+    r"|\b(est[- ](il|elle|ce)|sont[- ](ils|elles))\b",
+    re.I)
+
+# Impératifs uniquement — les formes conjuguées participe (« allumée »,
+# « éteinte ») ne matchent pas. « on »/« off » seuls : en fin de message
+# uniquement (ex. « Luminaires salon ON »).
+_ON_PAT = re.compile(
+    r"\b(allume[sz]?|active[sz]?|activer|ouvre[sz]?|ouvrir"
+    r"|démarre[sz]?|demarre[sz]?|lance[sz]?|mets?\s+en\s+marche|turn\s+on)\b"
+    r"|\bon\s*[.!]?\s*$",
+    re.I)
+_OFF_PAT = re.compile(
+    r"\b(éteins|éteignez|éteindre|eteins|eteignez|eteindre"
+    r"|coupe[sz]?|couper|ferme[sz]?|fermer|arrête[sz]?|arrete[sz]?"
+    r"|arrêter|arreter|stop|turn\s+off)\b"
+    r"|\boff\s*[.!]?\s*$",
+    re.I)
+
+# entity_id explicite (ex. light.salon) — chemin direct sans résolution.
+_ENT_PAT = re.compile(
+    r"\b(" + "|".join(CONTROLLABLE_DOMAINS + ["sensor"]) + r")\.\w+", re.I)
+
+# Consigne de température : « 21°C », « 20 degrés », « à 21 » (mais pas
+# « à 15 h/heures » ni « à 50% » — expressions horaires/pourcentages exclues).
+_TEMP_PAT = re.compile(
+    r"\b(\d{1,2}(?:[.,]\d)?)\s*(?:°\s*c?|degr[eé]s?)(?!\w)"
+    r"|\bà\s+(\d{1,2}(?:[.,]\d)?)(?!\s*(?:h\b|heures?\b|%|min\b))(?!\w)",
+    re.I)
+_TEMP_VERBS = re.compile(
+    r"\b(règle\w*|regle\w*|mets?\b|mettre|fixe\w*|consigne"
+    r"|monte\w*|baisse\w*|chauffe\w*|température|temperature)\b",
+    re.I)
+
+
+async def _resolve_target(msg: str) -> tuple[list[str], str]:
+    """entity_id explicite dans le message, sinon résolution alias/friendly_name."""
+    m = _ENT_PAT.search(msg)
+    if m:
+        eid = m.group(0).lower()
+        return [eid], eid
+    return await resolve_entities(msg)
 
 
 class HomeAssistantAgent(Agent):
@@ -45,103 +97,101 @@ class HomeAssistantAgent(Agent):
 
     async def handle(self, request: AgentRequest) -> AgentResponse:
         msg = request.message
+        is_question = bool(_QUESTION_PAT.search(msg))
 
-        # ── Consigne de température ───────────────────────────────────────
+        if not is_question:
+            # ── Consigne de température ───────────────────────────────────
+            temp_resp = await self._maybe_set_temperature(request, msg)
+            if temp_resp is not None:
+                return temp_resp
+
+            # ── Allumer / éteindre ────────────────────────────────────────
+            is_off = bool(_OFF_PAT.search(msg))
+            is_on  = bool(_ON_PAT.search(msg)) and not is_off
+            if is_on or is_off:
+                return await self._do_switch(request, msg, is_on)
+
+        # ── Lecture : états ───────────────────────────────────────────────
+        return await self._read_states(request, msg)
+
+    async def _maybe_set_temperature(self, request: AgentRequest, msg: str) -> AgentResponse | None:
+        """Retourne une réponse si le message est une consigne de température
+        applicable à un thermostat, sinon None (on continue le traitement)."""
         temp_match = _TEMP_PAT.search(msg)
-        if temp_match and _TEMP_VERBS.search(msg):
-            raw = (temp_match.group(1) or temp_match.group(2) or "").replace(",", ".")
-            try:
-                temperature = float(raw)
-            except ValueError:
-                temperature = None
-            if temperature is not None and 5 <= temperature <= 35:
-                entity_match = _ENT_PAT.search(msg)
-                if entity_match:
-                    entity_ids = [entity_match.group(0).lower()]
-                    target = entity_ids[0]
-                else:
-                    entity_ids, target = await resolve_entities(msg)
-                climate_ids = [e for e in entity_ids if e.startswith("climate.")]
-                if not climate_ids and not entity_ids:
-                    return AgentResponse(
-                        request_id=request.request_id,
-                        agent="home_assistant",
-                        status=AgentStatus.ok,
-                        content=(
-                            f"Je n'ai pas trouvé à quel thermostat appliquer {temperature}°C. "
-                            "Précise : « règle le chauffage à 20° » ou « règle la clim à 22° »."
-                        ),
-                    )
-                target_ids = climate_ids or entity_ids
-                # Exécution directe sur le premier climate trouvé
-                result = await set_temperature(target_ids[0], temperature)
-                if result.ok:
-                    return AgentResponse(
-                        request_id=request.request_id,
-                        agent="home_assistant",
-                        status=AgentStatus.ok,
-                        content=f"✓ Consigne réglée à **{temperature}°C** sur {target}.",
-                    )
-                return AgentResponse(
-                    request_id=request.request_id,
-                    agent="home_assistant",
-                    status=AgentStatus.error,
-                    content=f"Erreur lors du réglage : {result.error}",
-                )
+        if not (temp_match and _TEMP_VERBS.search(msg)):
+            return None
+        raw = (temp_match.group(1) or temp_match.group(2) or "").replace(",", ".")
+        try:
+            temperature = float(raw)
+        except ValueError:
+            return None
+        if not (5 <= temperature <= 35):
+            return None
 
-        # ── Action allumer / éteindre ─────────────────────────────────────
-        is_off = bool(_OFF_PAT.search(msg))
-        is_on  = bool(_ON_PAT.search(msg)) and not is_off
-        entity_match = _ENT_PAT.search(msg)
+        entity_ids, target = await _resolve_target(msg)
+        heat_ids = [e for e in entity_ids
+                    if e.split(".")[0] in ("climate", "water_heater")]
+        if not heat_ids:
+            # Pas un thermostat → ce n'était pas une consigne, on laisse
+            # les autres branches (on/off, lecture) traiter le message.
+            return None
 
-        if is_on or is_off:
-            fn    = turn_on if is_on else turn_off
-            label = "allumé" if is_on else "éteint"
-
-            if entity_match:
-                entity_ids = [entity_match.group(0).lower()]
-                target = entity_ids[0]
-            else:
-                entity_ids, target = await resolve_entities(msg)
-
-            if not entity_ids:
-                return AgentResponse(
-                    request_id=request.request_id,
-                    agent="home_assistant",
-                    status=AgentStatus.ok,
-                    content=(
-                        "Je n'ai pas trouvé à quelle entité tu fais référence. "
-                        "Tu peux :\n"
-                        "- préciser le nom exact (ex. « allume light.luminaire_salon »),\n"
-                        "- ou déclarer un alias dans `config/ha_aliases.yaml`.\n\n"
-                        "_Astuce : demande « liste les lumières » pour voir les noms réels._"
-                    ),
-                )
-
-            # Exécution directe sur toutes les entités cibles
-            errors = []
-            for eid in entity_ids:
-                r = await fn(eid)
-                if not r.ok:
-                    errors.append(f"{eid}: {r.error}")
-
-            shown = ", ".join(f"`{e}`" for e in entity_ids[:6])
-            extra = f" (+{len(entity_ids) - 6})" if len(entity_ids) > 6 else ""
-            if errors:
-                return AgentResponse(
-                    request_id=request.request_id,
-                    agent="home_assistant",
-                    status=AgentStatus.error,
-                    content=f"Erreur partielle sur {target} :\n" + "\n".join(errors),
-                )
+        result = await set_temperature(
+            heat_ids if len(heat_ids) > 1 else heat_ids[0], temperature)
+        if result.ok:
+            shown = ", ".join(f"`{e}`" for e in heat_ids)
             return AgentResponse(
                 request_id=request.request_id,
                 agent="home_assistant",
                 status=AgentStatus.ok,
-                content=f"✓ **{target}** {label} — {shown}{extra}",
+                content=f"✓ Consigne réglée à **{temperature}°C** sur {target} ({shown}).",
+            )
+        return AgentResponse(
+            request_id=request.request_id,
+            agent="home_assistant",
+            status=AgentStatus.error,
+            content=f"Erreur lors du réglage : {result.error}",
+        )
+
+    async def _do_switch(self, request: AgentRequest, msg: str, is_on: bool) -> AgentResponse:
+        fn    = turn_on if is_on else turn_off
+        label = "allumé" if is_on else "éteint"
+
+        entity_ids, target = await _resolve_target(msg)
+        if not entity_ids:
+            return AgentResponse(
+                request_id=request.request_id,
+                agent="home_assistant",
+                status=AgentStatus.ok,
+                content=(
+                    "Je n'ai pas trouvé à quelle entité tu fais référence. "
+                    "Tu peux :\n"
+                    "- préciser le nom exact (ex. « allume light.luminaire_salon »),\n"
+                    "- ou déclarer un alias dans `config/ha_aliases.yaml`.\n\n"
+                    "_Astuce : demande « liste les lumières » pour voir les noms réels._"
+                ),
             )
 
-        # ── Lecture : états ───────────────────────────────────────────────
+        # Un seul appel de service — HA accepte une liste d'entity_id.
+        result = await fn(entity_ids if len(entity_ids) > 1 else entity_ids[0])
+
+        shown = ", ".join(f"`{e}`" for e in entity_ids[:6])
+        extra = f" (+{len(entity_ids) - 6})" if len(entity_ids) > 6 else ""
+        if not result.ok:
+            return AgentResponse(
+                request_id=request.request_id,
+                agent="home_assistant",
+                status=AgentStatus.error,
+                content=f"Erreur sur {target} : {result.error}",
+            )
+        return AgentResponse(
+            request_id=request.request_id,
+            agent="home_assistant",
+            status=AgentStatus.ok,
+            content=f"✓ **{target}** {label} — {shown}{extra}",
+        )
+
+    async def _read_states(self, request: AgentRequest, msg: str) -> AgentResponse:
         domain = None
         if any(w in msg.lower() for w in ["lumière", "lumiere", "lampe", "light"]):
             domain = "light"

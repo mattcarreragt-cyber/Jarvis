@@ -27,6 +27,8 @@ app = FastAPI(title="Piper TTS")
 # Sérialise les synthèses : Piper charge le modèle en mémoire, on évite la
 # contention CPU en n'en lançant qu'une à la fois.
 _lock = asyncio.Lock()
+# Sérialise les téléchargements de voix (indépendant des synthèses en cours).
+_download_lock = asyncio.Lock()
 
 
 def _voice_present(voice: str) -> bool:
@@ -34,22 +36,37 @@ def _voice_present(voice: str) -> bool:
 
 
 async def _ensure_voice(voice: str) -> None:
-    """Télécharge la voix dans DATA_DIR si absente (piper-tts ≥1.x)."""
+    """Télécharge la voix dans DATA_DIR si absente (piper-tts ≥1.x).
+
+    Téléchargement dans un répertoire temporaire puis déplacement atomique :
+    un download interrompu (restart conteneur, requêtes concurrentes) ne peut
+    pas laisser un .onnx tronqué que piper considérerait valide pour toujours.
+    """
     if _voice_present(voice):
         return
     os.makedirs(DATA_DIR, exist_ok=True)
-    proc = await asyncio.create_subprocess_exec(
-        "python", "-m", "piper.download_voices", voice,
-        cwd=DATA_DIR,                       # télécharge dans le cache monté
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    _, stderr = await proc.communicate()
-    if proc.returncode != 0 or not _voice_present(voice):
-        raise RuntimeError(
-            f"téléchargement de la voix {voice} échoué : "
-            + stderr.decode("utf-8", "replace")[:400]
-        )
+    async with _download_lock:
+        if _voice_present(voice):           # une requête concurrente l'a déjà fait
+            return
+        with tempfile.TemporaryDirectory(dir=DATA_DIR) as tmp:
+            proc = await asyncio.create_subprocess_exec(
+                "python", "-m", "piper.download_voices", voice,
+                cwd=tmp,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await proc.communicate()
+            onnx = os.path.join(tmp, f"{voice}.onnx")
+            if proc.returncode != 0 or not os.path.exists(onnx):
+                raise RuntimeError(
+                    f"téléchargement de la voix {voice} échoué : "
+                    + stderr.decode("utf-8", "replace")[:400]
+                )
+            # Déplacement atomique (même filesystem : tmp est dans DATA_DIR)
+            for suffix in (".onnx.json", ".onnx"):
+                src = os.path.join(tmp, f"{voice}{suffix}")
+                if os.path.exists(src):
+                    os.replace(src, os.path.join(DATA_DIR, f"{voice}{suffix}"))
 
 
 async def _synthesize(text: str, voice: str) -> bytes:

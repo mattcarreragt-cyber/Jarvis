@@ -74,7 +74,7 @@ VOICES = [
 ]
 
 
-@router.get("/voices")
+@router.get("/voices", dependencies=[Depends(require_api_key)])
 async def voices():
     """Liste des voix disponibles + voix par défaut (pour le sélecteur dashboard)."""
     from app.config import settings

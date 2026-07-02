@@ -100,7 +100,12 @@ export default function Home() {
 
   const playTTS = useCallback(async (text: string) => {
     const url = await speak(text, voice || undefined)
-    if (url) { try { await new Audio(url).play() } catch { /* lecture refusée */ } }
+    if (!url) return
+    const audio = new Audio(url)
+    // Libère le blob une fois la lecture terminée (sinon fuite mémoire par message)
+    audio.addEventListener('ended', () => URL.revokeObjectURL(url))
+    audio.addEventListener('error', () => URL.revokeObjectURL(url))
+    try { await audio.play() } catch { URL.revokeObjectURL(url) /* lecture refusée */ }
   }, [voice])
 
   const sendMessage = useCallback(async (text: string) => {

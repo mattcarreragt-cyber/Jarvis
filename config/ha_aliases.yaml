@@ -45,9 +45,9 @@ aliases:
   "volets salon":          [cover.salon_droite, cover.salon_gauche]
   "volet séjour":          cover.sejour
   "volets séjour":         cover.sejour
+  # NB : pas d'alias « baie » seul — trop ambigu dans une phrase.
   "baie vitrée":           cover.baie_vitree
   "baie vitree":           cover.baie_vitree
-  "baie":                  cover.baie_vitree
 
   # Tous les volets ensemble
   "volets maison":         [cover.baie_vitree, cover.bureau, cover.chambre, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain, cover.salon_droite, cover.salon_gauche, cover.sejour]
@@ -69,8 +69,9 @@ aliases:
   "samsung":               switch.unnamed_p300_tv_samsung
   "grand écran":           switch.unnamed_p300_tv_samsung
 
+  # NB : pas d'alias « son » seul — c'est aussi le possessif français
+  # (« la lampe de son bureau » couperait la barre de son).
   "barre de son":          switch.unnamed_p300_barre_de_son
-  "son":                   switch.unnamed_p300_barre_de_son
   "enceinte":              switch.unnamed_p300_barre_de_son
   "barre son":             switch.unnamed_p300_barre_de_son
 

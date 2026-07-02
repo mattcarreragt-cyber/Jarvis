@@ -26,6 +26,12 @@ Tout outil `side_effects == "write"` ciblant un système en production renvoie
 qu'après `POST /api/chat/confirm`. Cela matérialise la règle « ne jamais casser
 l'existant ».
 
+**Exception — Home Assistant** (choix utilisateur) : les commandes domotiques
+s'exécutent directement, sans confirmation, pour rester utilisables à la voix.
+Garde-fous côté agent : seuls les impératifs déclenchent une action (les
+questions « est-il éteint ? » et les participes « allumée » sont ignorés),
+et les consignes de température sont bornées à 5-35 °C.
+
 ## Sandboxing de l'Agent Dev
 
 L'agent Dev (qui exécute du code/scripts) tourne dans un **conteneur isolé**,

@@ -164,7 +164,7 @@ Dans le dashboard, tape :
 | `cpu et ram de la machine` | system |
 | `état des conteneurs docker` | unraid |
 | `espace disque du nas` | unraid |
-| `allume light.salon` | home_assistant (→ demande confirmation) |
+| `allume light.salon` | home_assistant (→ exécution directe) |
 | ` ```python\nprint(6*7)\n``` ` | dev (sandbox Docker) |
 
 Pour la **recherche / marketing**, ingère d'abord un document via l'icône

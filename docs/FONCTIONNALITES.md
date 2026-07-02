@@ -121,10 +121,11 @@ Différence : ⏰ **rappel** = te notifier · 🤖 **automatisation** = JARVIS *
 |--------|---------|
 | Voir les lumières | « **liste mes lumières** » |
 | Lire les capteurs | « **température du salon** », « **humidité** », « **capteurs** » |
-| Agir | « **allume** light.salon » → bouton **CONFIRMER** |
+| Agir | « **allume** la lumière du salon » → exécution directe |
 | Panneau | bouton 🏠 (capteurs en direct + bascule lumières/prises) |
 
-Toute action en chat demande **confirmation** ; dans le panneau, le bouton = action explicite. 🟢
+Les commandes domotiques s'exécutent **directement** (usage vocal). Garde-fous :
+les questions et participes ne déclenchent rien, consignes bornées 5-35 °C. 🟢
 
 ---
 

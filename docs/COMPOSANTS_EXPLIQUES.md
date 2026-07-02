@@ -102,7 +102,7 @@ l'aide du LLM pour les phrases ambiguës).
 | **chat** | conversation générale (par défaut) |
 | **system** | état du serveur (CPU, RAM, disques) |
 | **unraid** | conteneurs Docker, stockage du NAS |
-| **home_assistant** | domotique (lumières, capteurs) — demande confirmation pour agir |
+| **home_assistant** | domotique (lumières, capteurs) — exécution directe des commandes |
 | **recherche** | cherche dans les documents ingérés |
 | **nextcloud** | cherche dans tes fichiers Nextcloud |
 | **marketing** | assistant contenu pour la marque Xenum |

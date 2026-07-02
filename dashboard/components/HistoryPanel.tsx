@@ -75,8 +75,11 @@ export default function HistoryPanel({ onRestore, onClose }: Props) {
           {sessions.map(s => (
             <div
               key={s.id}
+              role="button"
+              tabIndex={0}
               onClick={() => open(s.id)}
-              className={`group relative w-full cursor-pointer px-3 py-2 text-[11px] transition-colors hover:bg-[rgba(0,212,255,0.05)] ${
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(s.id) } }}
+              className={`group relative w-full cursor-pointer px-3 py-2 text-[11px] transition-colors hover:bg-[rgba(0,212,255,0.05)] focus-visible:bg-[rgba(0,212,255,0.08)] outline-none ${
                 selected === s.id ? 'bg-[rgba(0,212,255,0.08)] text-[var(--cyan)]' : 'text-[var(--text-dim)]'
               }`}
             >

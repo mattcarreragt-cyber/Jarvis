@@ -1,7 +1,8 @@
 """Outils Home Assistant — API REST locale (aucun GPU requis).
 
 Lecture : libres.
-Écriture (turn_on, turn_off, call_service) : retournent needs_confirmation.
+Écriture (turn_on, turn_off, set_temperature) : exécution directe, sans
+confirmation (choix utilisateur — commandes vocales/textuelles immédiates).
 Token : HA_TOKEN (long-lived access token, Profil HA → Sécurité).
 """
 
@@ -10,6 +11,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import time
 import unicodedata
 from pathlib import Path
 
@@ -20,6 +22,12 @@ from app.config import settings
 from app.contracts import SideEffect, ToolResult, ToolSpec
 
 logger = logging.getLogger("jarvis.ha")
+
+# Domaines contrôlables par défaut — source unique, partagée avec ha_agent.
+CONTROLLABLE_DOMAINS = [
+    "light", "switch", "media_player", "cover", "climate",
+    "water_heater", "fan", "input_boolean",
+]
 
 # ─── Résolution langage naturel → entités HA (alias + nom convivial) ─────────
 
@@ -55,16 +63,49 @@ def _tokens(s: str) -> list[str]:
     return [t for t in _norm(s).split() if t]
 
 
+# Caches : alias (invalidé sur mtime) et index des états HA (TTL court).
+_alias_cache: tuple[str, float, dict] | None = None
+_states_cache: tuple[float, list[dict]] | None = None
+_STATES_TTL = 60.0  # les friendly_name ne changent quasiment jamais
+
+
+def _reset_caches() -> None:
+    """Vide les caches (utilisé par les tests)."""
+    global _alias_cache, _states_cache
+    _alias_cache = None
+    _states_cache = None
+
+
 def _load_aliases() -> dict:
+    global _alias_cache
     for cand in _ALIAS_CANDIDATES:
         if cand and Path(cand).is_file():
             try:
+                mtime = os.path.getmtime(cand)
+                if _alias_cache and _alias_cache[0] == cand and _alias_cache[1] == mtime:
+                    return _alias_cache[2]
                 with open(cand) as f:
-                    return yaml.safe_load(f) or {}
+                    data = yaml.safe_load(f) or {}
+                _alias_cache = (cand, mtime, data)
+                return data
             except Exception as e:
                 logger.warning("ha_aliases.yaml illisible: %s", e)
             break
     return {}
+
+
+async def _all_states() -> list[dict] | None:
+    """États HA avec cache TTL — évite de re-télécharger 370 entités par message."""
+    global _states_cache
+    now = time.monotonic()
+    if _states_cache and now - _states_cache[0] < _STATES_TTL:
+        return _states_cache[1]
+    res = await get_states(limit=0)
+    if not res.ok:
+        return None
+    states = res.data.get("states", [])
+    _states_cache = (now, states)
+    return states
 
 
 def _target_tokens(message: str) -> list[str]:
@@ -100,15 +141,13 @@ async def resolve_entities(message: str) -> tuple[list[str], str]:
     target = _target_tokens(message)
     if not target:
         return [], ""
-    domains = cfg.get("controllable_domains") or [
-        "light", "switch", "media_player", "cover", "climate", "fan", "input_boolean",
-    ]
-    res = await get_states(limit=0)
-    if not res.ok:
+    domains = cfg.get("controllable_domains") or CONTROLLABLE_DOMAINS
+    states = await _all_states()
+    if states is None:
         return [], ""
 
     scored: list[tuple[int, str, str]] = []
-    for s in res.data.get("states", []):
+    for s in states:
         eid = s["entity_id"]
         if eid.split(".")[0] not in domains:
             continue
@@ -118,8 +157,7 @@ async def resolve_entities(message: str) -> tuple[list[str], str]:
             scored.append((score, eid, s.get("friendly_name") or eid))
     if not scored:
         return [], ""
-    scored.sort(key=lambda x: x[0], reverse=True)
-    top = scored[0][0]
+    top = max(sc for sc, _, _ in scored)
     winners = [(eid, name) for sc, eid, name in scored if sc == top]
     ids = [eid for eid, _ in winners]
     label = winners[0][1] if len(winners) == 1 else " + ".join(n for _, n in winners[:4])
@@ -186,19 +224,24 @@ async def get_entity(entity_id: str) -> ToolResult:
         return ToolResult(ok=False, error=str(e))
 
 
-async def turn_on(entity_id: str) -> ToolResult:
-    """Allume une entité HA (lumière, switch, etc.)."""
+async def turn_on(entity_id: str | list[str]) -> ToolResult:
+    """Allume une ou plusieurs entités HA (un seul appel de service)."""
     return await _call_service("homeassistant", "turn_on", {"entity_id": entity_id})
 
 
-async def turn_off(entity_id: str) -> ToolResult:
-    """Éteint une entité HA."""
+async def turn_off(entity_id: str | list[str]) -> ToolResult:
+    """Éteint une ou plusieurs entités HA (un seul appel de service)."""
     return await _call_service("homeassistant", "turn_off", {"entity_id": entity_id})
 
 
-async def set_temperature(entity_id: str, temperature: float) -> ToolResult:
-    """Règle la consigne de température d'un climate (chauffage/clim)."""
-    return await _call_service("climate", "set_temperature",
+async def set_temperature(entity_id: str | list[str], temperature: float) -> ToolResult:
+    """Règle la consigne de température (climate OU water_heater — le service
+    est choisi selon le domaine de l'entité)."""
+    ids = entity_id if isinstance(entity_id, list) else [entity_id]
+    domain = ids[0].split(".")[0]
+    if domain not in ("climate", "water_heater"):
+        return ToolResult(ok=False, error=f"{ids[0]} n'est pas un thermostat (domaine {domain})")
+    return await _call_service(domain, "set_temperature",
                                {"entity_id": entity_id, "temperature": temperature})
 
 

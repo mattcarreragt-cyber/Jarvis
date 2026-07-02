@@ -59,7 +59,12 @@ class ToolResult:
 ```
 
 Règle : un outil avec `side_effects == "write"` sur un système en production
-(Unraid, Home Assistant) DOIT renvoyer `needs_confirmation` avant exécution.
+(Unraid) DOIT renvoyer `needs_confirmation` avant exécution.
+**Exception (choix utilisateur)** : les commandes domotiques Home Assistant
+(allumer/éteindre, consigne de température) s'exécutent directement — la
+friction d'une confirmation est incompatible avec l'usage vocal. Garde-fous :
+détection d'impératif uniquement (les questions et participes ne déclenchent
+rien), plage de température bornée 5-35 °C.
 
 ## 2.4 Contrat d'enregistrement d'un Agent
 

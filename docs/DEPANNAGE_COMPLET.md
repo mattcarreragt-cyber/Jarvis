@@ -209,8 +209,11 @@ Organisé par **symptôme**. Pour chaque cas : cause probable → solution.
   dans `HA_TOKEN` ; vérifie `HA_URL` (IP + port 8123) ; redémarre l'API.
 
 ### ❌ « allume … » ne fait rien
-- **Cause :** c'est **voulu** — les actions demandent une **confirmation**.
-- **Solution :** clique le bouton **CONFIRMER** qui apparaît sous le message.
+- **Cause :** l'entité n'a pas été reconnue (pas d'alias ni de friendly_name
+  correspondant), ou la phrase est interprétée comme une **question**
+  (les questions ne déclenchent jamais d'action, par sécurité).
+- **Solution :** utilise un impératif (« allume la lumière du salon »), et
+  déclare tes phrases dans `config/ha_aliases.yaml`.
 
 ---
 
