@@ -59,9 +59,11 @@ class ChatAgent(Agent):
         if hint == "local":
             answer_local = None
             if disp.get("ok"):
+                # Timeout court : si le LLM CPU est pendu, on bascule vite
+                # sur Kubuntu au lieu d'attendre 2 minutes.
                 answer_local = await chat(
                     self._build_messages(req), model=disp.get("model"),
-                    base_url=disp.get("base_url"))
+                    base_url=disp.get("base_url"), timeout=60)
             if answer_local:
                 return AgentResponse(
                     request_id=req.request_id, agent="chat",

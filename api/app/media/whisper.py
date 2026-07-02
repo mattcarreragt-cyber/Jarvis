@@ -32,15 +32,19 @@ async def health() -> bool:
 
 
 async def transcribe(audio: bytes, filename: str = "audio.webm",
-                     language: str = "fr", base_url: str | None = None) -> str | None:
+                     language: str = "fr", base_url: str | None = None,
+                     timeout: float = 120) -> str | None:
     """Transcrit un fichier audio en texte. None si Whisper injoignable.
 
     base_url : surcharge l'endpoint (ex. Whisper CPU sur Unraid). None = défaut.
+    timeout  : borne la tentative (plus court pour le palier local → fallback GPU
+               rapide si le conteneur local est pendu).
     """
     if not audio:
         return None
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        t = httpx.Timeout(timeout, connect=5)
+        async with httpx.AsyncClient(timeout=t) as client:
             r = await client.post(
                 f"{_base(base_url)}/asr",
                 params={"task": "transcribe", "language": language, "output": "txt"},

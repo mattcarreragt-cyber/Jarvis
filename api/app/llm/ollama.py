@@ -117,14 +117,17 @@ async def chat(
     model: str = CHAT_MODEL_FAST,
     temperature: float = 0.7,
     base_url: str | None = None,
+    timeout: float | None = None,
 ) -> str | None:
     """Complétion de chat. messages = [{"role": "...", "content": "..."}].
 
     base_url : surcharge l'endpoint (ex. RunPod). None = Kubuntu par défaut.
+    timeout  : borne la tentative (ex. palier local CPU avant fallback GPU).
     None si Ollama injoignable.
     """
     try:
-        async with httpx.AsyncClient(timeout=_CHAT_TIMEOUT) as client:
+        t = httpx.Timeout(timeout or _CHAT_TIMEOUT, connect=5)
+        async with httpx.AsyncClient(timeout=t) as client:
             r = await client.post(
                 f"{_base(base_url)}/api/chat",
                 json={

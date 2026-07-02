@@ -59,8 +59,16 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9 ]", " ", s)
 
 
+def _singular(t: str) -> str:
+    """Pluriel → singulier approximatif (volets→volet, lumieres→lumiere).
+    Appliqué des deux côtés (alias ET message), donc toujours cohérent."""
+    if len(t) > 3 and t.endswith("s") and not t.endswith("ss"):
+        return t[:-1]
+    return t
+
+
 def _tokens(s: str) -> list[str]:
-    return [t for t in _norm(s).split() if t]
+    return [_singular(t) for t in _norm(s).split() if t]
 
 
 # Caches : alias (invalidé sur mtime) et index des états HA (TTL court).
@@ -108,10 +116,16 @@ async def _all_states() -> list[dict] | None:
     return states
 
 
+# Ensembles normalisés (accents retirés + singularisés) — mêmes règles que
+# les tokens du message, pour que la comparaison soit cohérente.
+_ACTION_TOKENS = {t for w in _ACTION_WORDS for t in _tokens(w)}
+_FILLER_TOKENS = {t for w in _FILLER_WORDS for t in _tokens(w)}
+
+
 def _target_tokens(message: str) -> list[str]:
     """Tokens de la cible : message moins les mots d'action et de remplissage."""
     return [t for t in _tokens(message)
-            if t not in _ACTION_WORDS and t not in _FILLER_WORDS]
+            if t not in _ACTION_TOKENS and t not in _FILLER_TOKENS]
 
 
 async def resolve_entities(message: str) -> tuple[list[str], str]:

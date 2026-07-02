@@ -121,6 +121,18 @@ async def test_ha_participles_do_not_trigger_write():
     assert resp.status == AgentStatus.ok
 
 
+async def test_ha_alias_singular_plural_equivalence():
+    """« volet chambre » (alias) matche « ferme les VOLETS de la chambre »."""
+    aliases = {"aliases": {"volet chambre": "cover.chambre"}}
+    with patch("app.agents.ha_tools.get_states", new=AsyncMock(
+        return_value=ToolResult(ok=True, data={"states": _STATES, "total": 3})
+    )), patch("app.agents.ha_tools._load_aliases", return_value=aliases), \
+         patch("app.agents.ha_agent.turn_off", new=AsyncMock(return_value=_OK)) as m:
+        resp = await HomeAssistantAgent().handle(_req("ferme les volets de la chambre"))
+    assert resp.status == AgentStatus.ok
+    m.assert_awaited_once_with("cover.chambre")
+
+
 async def test_ha_on_at_end_of_message():
     """« Luminaires salon ON » (le cas d'usage d'origine) → allume."""
     aliases = {"aliases": {"luminaires salon": ["light.salon"]}}

@@ -37,7 +37,7 @@ async def test_chat_agent_uses_persona():
 
     captured = {}
 
-    async def fake_chat(messages, model=None, temperature=0.7, base_url=None):
+    async def fake_chat(messages, model=None, temperature=0.7, base_url=None, timeout=None):
         captured["sys"] = messages[0]["content"]
         return "ok"
 

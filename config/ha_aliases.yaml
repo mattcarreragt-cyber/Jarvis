@@ -4,38 +4,32 @@
 #   "phrase telle que tu la dis": entity_id            (une seule entité)
 #   "autre phrase": [entity_id_1, entity_id_2, ...]     (plusieurs entités)
 #
-# - La casse et les accents n'ont pas d'importance.
+# - Casse, accents et PLURIELS ignorés : « volet chambre » matche aussi
+#   « ferme les VOLETS de la CHAMBRE stp ». Inutile de doubler les formes.
 # - L'alias matche si TOUS ses mots sont présents dans ta phrase.
-#   Ex. "volet chambre" matche « ferme le VOLET de la CHAMBRE stp ».
+# - Les ancres YAML (&nom / *nom) évitent de répéter les listes.
 # - Ce fichier est rechargé à chaud (pas besoin de redémarrer l'API).
 
 aliases:
 
   # ─── LUMIÈRES (3 ampoules connectées : salon, séjour, chambre) ─────────────
   "lumière salon":     light.luminaire_salon
-  "lumières salon":    light.luminaire_salon
   "luminaire salon":   light.luminaire_salon
   "lampe salon":       light.luminaire_salon
-  "salon lumière":     light.luminaire_salon
 
   "lumière séjour":    light.sejour
-  "lumières séjour":   light.sejour
   "lampe séjour":      light.sejour
 
   "lumière chambre":   light.chambre
-  "lumières chambre":  light.chambre
   "lampe chambre":     light.chambre
 
-  "toutes lumières":     [light.luminaire_salon, light.sejour, light.chambre]
-  "toutes les lumières": [light.luminaire_salon, light.sejour, light.chambre]
+  "toutes les lumières": &all_lights [light.luminaire_salon, light.sejour, light.chambre]
+  "toutes lumières":     *all_lights
 
   # ─── VOLETS ────────────────────────────────────────────────────────────────
   "volet chambre":         cover.chambre
-  "volets chambre":        cover.chambre
   "volet bureau":          cover.bureau
-  "volets bureau":         cover.bureau
   "volet cuisine":         cover.cuisine
-  "volets cuisine":        cover.cuisine
   "volet salle à manger":  cover.salle_a_manger
   "volet salle manger":    cover.salle_a_manger
   "volet salle de bain":   cover.salle_de_bain
@@ -44,43 +38,41 @@ aliases:
   "volet salon gauche":    cover.salon_gauche
   "volets salon":          [cover.salon_droite, cover.salon_gauche]
   "volet séjour":          cover.sejour
-  "volets séjour":         cover.sejour
   # NB : pas d'alias « baie » seul — trop ambigu dans une phrase.
   "baie vitrée":           cover.baie_vitree
-  "baie vitree":           cover.baie_vitree
 
   # Tous les volets ensemble
-  "volets maison":         [cover.baie_vitree, cover.bureau, cover.chambre, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain, cover.salon_droite, cover.salon_gauche, cover.sejour]
-  "tous les volets":       [cover.baie_vitree, cover.bureau, cover.chambre, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain, cover.salon_droite, cover.salon_gauche, cover.sejour]
-  "tous volets":           [cover.baie_vitree, cover.bureau, cover.chambre, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain, cover.salon_droite, cover.salon_gauche, cover.sejour]
+  "volets maison": &all_covers [cover.baie_vitree, cover.bureau, cover.chambre,
+                                cover.cuisine, cover.salle_a_manger, cover.salle_de_bain,
+                                cover.salon_droite, cover.salon_gauche, cover.sejour]
+  "tous les volets":       *all_covers
 
   # Volets par étage
-  "volets rdc":            [cover.salon_droite, cover.salon_gauche, cover.sejour, cover.baie_vitree, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain]
-  "volets bas":            [cover.salon_droite, cover.salon_gauche, cover.sejour, cover.baie_vitree, cover.cuisine, cover.salle_a_manger, cover.salle_de_bain]
-  "volets étage":          [cover.chambre, cover.bureau]
-  "volets haut":           [cover.chambre, cover.bureau]
+  "volets rdc": &covers_rdc [cover.salon_droite, cover.salon_gauche, cover.sejour,
+                             cover.baie_vitree, cover.cuisine, cover.salle_a_manger,
+                             cover.salle_de_bain]
+  "volets bas":            *covers_rdc
+  "volets étage": &covers_etage [cover.chambre, cover.bureau]
+  "volets haut":           *covers_etage
 
-  # ─── MULTIMÉDIA & ÉLECTRONIQUE (prises connectées Tapo/Meross P300) ────────
+  # ─── MULTIMÉDIA & ÉLECTRONIQUE (prises connectées Tapo P300) ───────────────
   "télé":                  switch.unnamed_p300_tv_samsung
-  "tele":                  switch.unnamed_p300_tv_samsung
   "télévision":            switch.unnamed_p300_tv_samsung
   "tv salon":              switch.unnamed_p300_tv_samsung
   "tv samsung":            switch.unnamed_p300_tv_samsung
-  "samsung":               switch.unnamed_p300_tv_samsung
   "grand écran":           switch.unnamed_p300_tv_samsung
 
   # NB : pas d'alias « son » seul — c'est aussi le possessif français
   # (« la lampe de son bureau » couperait la barre de son).
   "barre de son":          switch.unnamed_p300_barre_de_son
-  "enceinte":              switch.unnamed_p300_barre_de_son
   "barre son":             switch.unnamed_p300_barre_de_son
+  "enceinte":              switch.unnamed_p300_barre_de_son
 
   "ps5":                   switch.unnamed_p300_ps5
   "playstation":           switch.unnamed_p300_ps5
   "console":               switch.unnamed_p300_ps5
 
   "home cinéma":           [switch.unnamed_p300_tv_samsung, switch.unnamed_p300_barre_de_son]
-  "home cinema":           [switch.unnamed_p300_tv_samsung, switch.unnamed_p300_barre_de_son]
 
   # PC Gaming
   "pc gaming":             switch.pc_gaming
@@ -96,7 +88,6 @@ aliases:
   # TV chambre
   "tv chambre":            media_player.tv_chambre
   "télé chambre":          media_player.tv_chambre
-  "télévision chambre":    media_player.tv_chambre
 
   # ─── PRISE FOUR (entité nommée prise_chambre mais c'est le four) ───────────
   "four":                  switch.prise_chambre
@@ -116,13 +107,11 @@ aliases:
   "chauffage":             climate.unknown_2935304596
   "thermostat":            climate.unknown_2935304596
   "pompe à chaleur":       climate.unknown_2935304596
-  "pompe chaleur":         climate.unknown_2935304596
   "netatmo":               climate.unknown_2935304596
 
   # ─── EAU CHAUDE ────────────────────────────────────────────────────────────
   "eau chaude":            water_heater.eau_chaude
   "chauffe-eau":           water_heater.eau_chaude
-  "chauffe eau":           water_heater.eau_chaude
   "ballon eau":            water_heater.eau_chaude
   "cumulus":               water_heater.eau_chaude
 

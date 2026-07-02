@@ -29,12 +29,13 @@ async def transcribe(file: UploadFile = File(...), language: str = "fr"):
         raise HTTPException(413, f"Audio trop volumineux (max {MAX_AUDIO_MB} Mo)")
     fname = file.filename or "audio.webm"
 
-    # 1) Local CPU Unraid (pas de WoL)
+    # 1) Local CPU Unraid (pas de WoL) — timeout court : si le conteneur local
+    #    est pendu, on bascule vite sur le GPU au lieu d'attendre 2 minutes.
     if settings.local_cpu_enabled:
         local = await dispatch("stt.local")
         if local.get("ok"):
             text = await whisper.transcribe(audio, filename=fname, language=language,
-                                            base_url=local.get("base_url"))
+                                            base_url=local.get("base_url"), timeout=45)
             if text is not None:
                 return {"text": text, "source": "unraid-cpu"}
 
