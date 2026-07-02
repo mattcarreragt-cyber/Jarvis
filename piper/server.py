@@ -69,39 +69,60 @@ async def _ensure_voice(voice: str) -> None:
                     os.replace(src, os.path.join(DATA_DIR, f"{voice}{suffix}"))
 
 
+# Modèles chargés en mémoire (voix → PiperVoice). Garder le modèle chaud
+# évite de payer le chargement ONNX (~1-3 s CPU) à chaque phrase.
+_loaded: dict[str, object] = {}
+_MAX_LOADED = 2  # ~60-100 Mo par voix — on garde les 2 dernières utilisées
+
+
+def _get_voice(voice: str):
+    from piper import PiperVoice
+    v = _loaded.pop(voice, None)          # pop+réinsertion = ordre LRU
+    if v is None:
+        v = PiperVoice.load(os.path.join(DATA_DIR, f"{voice}.onnx"))
+    _loaded[voice] = v
+    while len(_loaded) > _MAX_LOADED:
+        _loaded.pop(next(iter(_loaded)))  # évince la moins récemment utilisée
+    return v
+
+
+def _synth_blocking(voice_name: str, text: str) -> bytes:
+    """Synthèse synchrone (exécutée dans un thread executor)."""
+    import io
+    import wave
+
+    v = _get_voice(voice_name)
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        v.synthesize_wav(text, wf)
+    return buf.getvalue()
+
+
 async def _synthesize(text: str, voice: str) -> bytes:
     text = (text or "").strip()
     if not text:
         return b""
     voice = voice or DEFAULT_VOICE
     await _ensure_voice(voice)
-    out_path = tempfile.mktemp(suffix=".wav", dir="/tmp")
     async with _lock:
-        proc = await asyncio.create_subprocess_exec(
-            "python", "-m", "piper",
-            "--model", voice,
-            "--data-dir", DATA_DIR,
-            "--output_file", out_path,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await proc.communicate(text.encode("utf-8"))
-        if proc.returncode != 0:
-            raise RuntimeError(stderr.decode("utf-8", "replace")[:500] or "piper a échoué")
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _synth_blocking, voice, text)
+
+
+@app.on_event("startup")
+async def _warmup():
+    """Précharge la voix par défaut (best-effort) : la première réponse
+    vocale n'attend ni téléchargement ni chargement du modèle."""
     try:
-        with open(out_path, "rb") as f:
-            return f.read()
-    finally:
-        try:
-            os.unlink(out_path)
-        except OSError:
-            pass
+        await _ensure_voice(DEFAULT_VOICE)
+        await asyncio.get_running_loop().run_in_executor(None, _get_voice, DEFAULT_VOICE)
+    except Exception:
+        pass  # pas de réseau au démarrage → la voix se chargera à la 1re requête
 
 
 @app.get("/health")
 async def health():
-    return {"ok": True, "default_voice": DEFAULT_VOICE}
+    return {"ok": True, "default_voice": DEFAULT_VOICE, "loaded": list(_loaded)}
 
 
 @app.post("/")
